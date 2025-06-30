@@ -1,0 +1,790 @@
+[
+  
+  {
+    "name": "spaghetti carbonara",
+    "cuisine": "italian",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "ingredients": [
+      {"item": "spaghetti", "quantity": 200, "unit": "g"},
+      {"item": "egg", "quantity": 2, "unit": "count"},
+      {"item": "pancetta", "quantity": 75, "unit": "g"},
+      {"item": "parmesan", "quantity": 40, "unit": "g"}
+    ],
+    "steps": [
+      "Cook spaghetti.",
+      "Fry pancetta until crisp.",
+      "Beat eggs with parmesan.",
+      "Toss hot pasta with pancetta and egg mix off the heat."
+    ]
+  },
+  {
+    "name": "margherita pizza",
+    "cuisine": "italian",
+    "prep_time_min": 20,
+    "cook_time_min": 12,
+    "ingredients": [
+      {"item": "pizza dough", "quantity": 1, "unit": "count"},
+      {"item": "tomato sauce", "quantity": 100, "unit": "ml"},
+      {"item": "mozzarella", "quantity": 125, "unit": "g"},
+      {"item": "basil", "quantity": 4, "unit": "count"}
+    ],
+    "steps": [
+      "Stretch dough.",
+      "Spread sauce, add mozzarella.",
+      "Bake 250 °C 10-12 min.",
+      "Garnish with basil leaves."
+    ]
+  },
+  {
+    "name": "pesto penne",
+    "cuisine": "italian",
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "penne", "quantity": 200, "unit": "g"},
+      {"item": "pesto", "quantity": 70, "unit": "g"}
+    ],
+    "steps": [
+      "Boil penne.",
+      "Reserve 2 Tbsp pasta water.",
+      "Stir pesto and water into drained pasta."
+    ]
+  },
+  {
+    "name": "risotto milanese",
+    "cuisine": "italian",
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "ingredients": [
+      {"item": "arborio rice", "quantity": 180, "unit": "g"},
+      {"item": "saffron", "quantity": 0.1, "unit": "g"},
+      {"item": "chicken stock", "quantity": 600, "unit": "ml"},
+      {"item": "parmesan", "quantity": 40, "unit": "g"}
+    ],
+    "steps": [
+      "Toast rice in butter.",
+      "Add saffron broth a ladle at a time, stirring.",
+      "Finish creamy with parmesan."
+    ]
+  },
+  {
+    "name": "lasagna al forno",
+    "cuisine": "italian",
+    "prep_time_min": 25,
+    "cook_time_min": 45,
+    "ingredients": [
+      {"item": "lasagna sheets", "quantity": 9, "unit": "count"},
+      {"item": "ragù", "quantity": 400, "unit": "g"},
+      {"item": "béchamel", "quantity": 300, "unit": "ml"},
+      {"item": "parmesan", "quantity": 50, "unit": "g"}
+    ],
+    "steps": [
+      "Layer sheets with ragù and béchamel.",
+      "Top with parmesan.",
+      "Bake 180 °C 40-45 min."
+    ]
+  },
+  {
+    "name": "caprese salad",
+    "cuisine": "italian",
+    "prep_time_min": 10,
+    "cook_time_min": 0,
+    "ingredients": [
+      {"item": "tomato", "quantity": 2, "unit": "count"},
+      {"item": "mozzarella", "quantity": 125, "unit": "g"},
+      {"item": "basil", "quantity": 6, "unit": "count"}
+    ],
+    "steps": ["Slice, stack, drizzle olive oil & salt."]
+  },
+  {
+    "name": "eggplant parmigiana",
+    "cuisine": "italian",
+    "prep_time_min": 20,
+    "cook_time_min": 35,
+    "ingredients": [
+      {"item": "eggplant", "quantity": 1, "unit": "count"},
+      {"item": "tomato sauce", "quantity": 250, "unit": "ml"},
+      {"item": "mozzarella", "quantity": 100, "unit": "g"},
+      {"item": "parmesan", "quantity": 40, "unit": "g"}
+    ],
+    "steps": [
+      "Grill eggplant slices.",
+      "Layer with sauce & cheeses.",
+      "Bake 180 °C 30 min."
+    ]
+  },
+  {
+    "name": "spaghetti aglio e olio",
+    "cuisine": "italian",
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "ingredients": [
+      {"item": "spaghetti", "quantity": 200, "unit": "g"},
+      {"item": "garlic", "quantity": 3, "unit": "clove"},
+      {"item": "olive oil", "quantity": 30, "unit": "ml"},
+      {"item": "chili flakes", "quantity": 1, "unit": "g"}
+    ],
+    "steps": [
+      "Gently fry garlic & chili.",
+      "Toss with al-dente spaghetti + splash of pasta water."
+    ]
+  },
+  {
+    "name": "gnocchi al pomodoro",
+    "cuisine": "italian",
+    "prep_time_min": 10,
+    "cook_time_min": 12,
+    "ingredients": [
+      {"item": "gnocchi", "quantity": 400, "unit": "g"},
+      {"item": "tomato sauce", "quantity": 250, "unit": "ml"},
+      {"item": "basil", "quantity": 4, "unit": "count"}
+    ],
+    "steps": [
+      "Boil gnocchi until they float.",
+      "Heat sauce, fold in gnocchi, garnish basil."
+    ]
+  },
+  {
+    "name": "tiramisù",
+    "cuisine": "italian",
+    "prep_time_min": 20,
+    "cook_time_min": 0,
+    "ingredients": [
+      {"item": "mascarpone", "quantity": 250, "unit": "g"},
+      {"item": "espresso", "quantity": 150, "unit": "ml"},
+      {"item": "ladyfingers", "quantity": 150, "unit": "g"},
+      {"item": "cocoa powder", "quantity": 5, "unit": "g"}
+    ],
+    "steps": [
+      "Layer coffee-soaked biscuits with mascarpone cream.",
+      "Chill 4 h, dust cocoa."
+    ]
+  },
+
+  
+  {
+    "name": "kung pao chicken",
+    "cuisine": "chinese",
+    "prep_time_min": 15,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "chicken", "quantity": 300, "unit": "g"},
+      {"item": "peanuts", "quantity": 30, "unit": "g"},
+      {"item": "dried chili", "quantity": 5, "unit": "count"},
+      {"item": "soy sauce", "quantity": 30, "unit": "ml"}
+    ],
+    "steps": [
+      "Stir-fry chicken, chilies, peanuts.",
+      "Add sauce, thicken 2 min."
+    ]
+  },
+  {
+    "name": "mapo tofu",
+    "cuisine": "chinese",
+    "prep_time_min": 10,
+    "cook_time_min": 12,
+    "ingredients": [
+      {"item": "soft tofu", "quantity": 400, "unit": "g"},
+      {"item": "ground pork", "quantity": 100, "unit": "g"},
+      {"item": "doubanjiang", "quantity": 15, "unit": "g"},
+      {"item": "Sichuan pepper", "quantity": 1, "unit": "g"}
+    ],
+    "steps": [
+      "Fry pork with doubanjiang.",
+      "Add tofu & broth, simmer.",
+      "Finish with Sichuan pepper oil."
+    ]
+  },
+  {
+    "name": "chow mein",
+    "cuisine": "chinese",
+    "prep_time_min": 10,
+    "cook_time_min": 8,
+    "ingredients": [
+      {"item": "egg noodles", "quantity": 200, "unit": "g"},
+      {"item": "mixed veg", "quantity": 150, "unit": "g"},
+      {"item": "soy sauce", "quantity": 25, "unit": "ml"}
+    ],
+    "steps": [
+      "Blanch noodles 1 min.",
+      "Stir-fry veg, add noodles & sauce."
+    ]
+  },
+  {
+    "name": "sweet and sour pork",
+    "cuisine": "chinese",
+    "prep_time_min": 20,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "pork loin", "quantity": 300, "unit": "g"},
+      {"item": "pineapple", "quantity": 80, "unit": "g"},
+      {"item": "bell pepper", "quantity": 1, "unit": "count"},
+      {"item": "sweet-sour sauce", "quantity": 100, "unit": "ml"}
+    ],
+    "steps": [
+      "Fry battered pork.",
+      "Toss with veg & sauce 3 min."
+    ]
+  },
+  {
+    "name": "egg fried rice",
+    "cuisine": "chinese",
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "cooked rice", "quantity": 300, "unit": "g"},
+      {"item": "egg", "quantity": 2, "unit": "count"},
+      {"item": "spring onion", "quantity": 2, "unit": "count"}
+    ],
+    "steps": [
+      "Scramble eggs.",
+      "Add rice, toss high heat.",
+      "Season soy, finish with onion."
+    ]
+  },
+  {
+    "name": "steamed fish with ginger",
+    "cuisine": "chinese",
+    "prep_time_min": 10,
+    "cook_time_min": 12,
+    "ingredients": [
+      {"item": "white fish fillet", "quantity": 300, "unit": "g"},
+      {"item": "ginger", "quantity": 10, "unit": "g"},
+      {"item": "soy sauce", "quantity": 20, "unit": "ml"}
+    ],
+    "steps": [
+      "Top fish with ginger.",
+      "Steam 10-12 min, pour hot soy-oil over."
+    ]
+  },
+  {
+    "name": "hot and sour soup",
+    "cuisine": "chinese",
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "stock", "quantity": 600, "unit": "ml"},
+      {"item": "tofu", "quantity": 100, "unit": "g"},
+      {"item": "mushroom", "quantity": 50, "unit": "g"},
+      {"item": "vinegar", "quantity": 15, "unit": "ml"}
+    ],
+    "steps": [
+      "Simmer ingredients.",
+      "Thicken with cornstarch.",
+      "Finish with chili oil & vinegar."
+    ]
+  },
+  {
+    "name": "beef and broccoli",
+    "cuisine": "chinese",
+    "prep_time_min": 12,
+    "cook_time_min": 8,
+    "ingredients": [
+      {"item": "beef sirloin", "quantity": 250, "unit": "g"},
+      {"item": "broccoli", "quantity": 150, "unit": "g"},
+      {"item": "oyster sauce", "quantity": 30, "unit": "ml"}
+    ],
+    "steps": [
+      "Sear beef strips.",
+      "Add blanched broccoli & sauce, toss 2 min."
+    ]
+  },
+  {
+    "name": "dan dan noodles",
+    "cuisine": "chinese",
+    "prep_time_min": 15,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "wheat noodles", "quantity": 200, "unit": "g"},
+      {"item": "ground pork", "quantity": 80, "unit": "g"},
+      {"item": "sesame paste", "quantity": 30, "unit": "g"},
+      {"item": "chili oil", "quantity": 20, "unit": "ml"}
+    ],
+    "steps": [
+      "Cook noodles.",
+      "Top with pork, sesame sauce, chili oil."
+    ]
+  },
+  {
+    "name": "char siu pork",
+    "cuisine": "chinese",
+    "prep_time_min": 15,
+    "cook_time_min": 30,
+    "ingredients": [
+      {"item": "pork shoulder", "quantity": 500, "unit": "g"},
+      {"item": "char siu sauce", "quantity": 80, "unit": "g"}
+    ],
+    "steps": [
+      "Marinate pork 4 h.",
+      "Roast 200 °C 30 min, basting."
+    ]
+  },
+
+  {
+    "name": "butter chicken",
+    "cuisine": "indian",
+    "prep_time_min": 25,
+    "cook_time_min": 35,
+    "ingredients": [
+      {"item": "chicken", "quantity": 500, "unit": "g"},
+      {"item": "butter", "quantity": 50, "unit": "g"},
+      {"item": "tomato puree", "quantity": 200, "unit": "ml"},
+      {"item": "cream", "quantity": 100, "unit": "ml"},
+      {"item": "garam masala", "quantity": 5, "unit": "g"}
+    ],
+    "steps": [
+      "Marinate chicken 20 min.",
+      "Brown chicken, set aside.",
+      "Simmer tomato + spices, add butter, cream, chicken; cook 15 min."
+    ]
+  },
+  {
+    "name": "chana masala",
+    "cuisine": "indian",
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "ingredients": [
+      {"item": "chickpeas", "quantity": 400, "unit": "g"},
+      {"item": "onion", "quantity": 1, "unit": "count"},
+      {"item": "garam masala", "quantity": 6, "unit": "g"},
+      {"item": "tomato", "quantity": 2, "unit": "count"}
+    ],
+    "steps": [
+      "Sauté onion, spices.",
+      "Add tomato, cook 5 min.",
+      "Stir in chickpeas, simmer 15 min."
+    ]
+  },
+  {
+    "name": "palak paneer",
+    "cuisine": "indian",
+    "prep_time_min": 15,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "spinach", "quantity": 250, "unit": "g"},
+      {"item": "paneer", "quantity": 200, "unit": "g"},
+      {"item": "cream", "quantity": 50, "unit": "ml"}
+    ],
+    "steps": [
+      "Blanch & blend spinach.",
+      "Fry paneer cubes.",
+      "Simmer spinach purée with spices, add paneer & cream."
+    ]
+  },
+  {
+    "name": "dal tadka",
+    "cuisine": "indian",
+    "prep_time_min": 5,
+    "cook_time_min": 30,
+    "ingredients": [
+      {"item": "yellow lentils", "quantity": 200, "unit": "g"},
+      {"item": "ghee", "quantity": 20, "unit": "g"},
+      {"item": "cumin", "quantity": 2, "unit": "g"}
+    ],
+    "steps": [
+      "Pressure-cook lentils until soft.",
+      "Temper ghee with cumin & chili, pour over dal."
+    ]
+  },
+  {
+    "name": "aloo gobi",
+    "cuisine": "indian",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "ingredients": [
+      {"item": "potato", "quantity": 2, "unit": "count"},
+      {"item": "cauliflower", "quantity": 200, "unit": "g"},
+      {"item": "turmeric", "quantity": 2, "unit": "g"}
+    ],
+    "steps": [
+      "Sauté spices.",
+      "Add veg & splash water, cover 15-20 min."
+    ]
+  },
+  {
+    "name": "masala dosa",
+    "cuisine": "indian",
+    "prep_time_min": 20,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "dosa batter", "quantity": 2, "unit": "cup"},
+      {"item": "potato masala", "quantity": 200, "unit": "g"}
+    ],
+    "steps": [
+      "Spread thin dosa.",
+      "Add potato filling, fold, serve."
+    ]
+  },
+  {
+    "name": "rogan josh",
+    "cuisine": "indian",
+    "prep_time_min": 15,
+    "cook_time_min": 60,
+    "ingredients": [
+      {"item": "lamb", "quantity": 600, "unit": "g"},
+      {"item": "yogurt", "quantity": 100, "unit": "ml"},
+      {"item": "kashmiri chili", "quantity": 5, "unit": "g"}
+    ],
+    "steps": [
+      "Brown lamb.",
+      "Simmer with spices & yogurt 1 h until tender."
+    ]
+  },
+  {
+    "name": "fish curry",
+    "cuisine": "indian",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "ingredients": [
+      {"item": "white fish", "quantity": 400, "unit": "g"},
+      {"item": "coconut milk", "quantity": 200, "unit": "ml"},
+      {"item": "curry leaves", "quantity": 6, "unit": "count"}
+    ],
+    "steps": [
+      "Sauté spices & curry leaves.",
+      "Add coconut milk, simmer fish 10 min."
+    ]
+  },
+  {
+    "name": "biryani",
+    "cuisine": "indian",
+    "prep_time_min": 30,
+    "cook_time_min": 40,
+    "ingredients": [
+      {"item": "basmati rice", "quantity": 300, "unit": "g"},
+      {"item": "chicken", "quantity": 400, "unit": "g"},
+      {"item": "biryani masala", "quantity": 10, "unit": "g"},
+      {"item": "yogurt", "quantity": 100, "unit": "ml"}
+    ],
+    "steps": [
+      "Layer par-boiled rice with marinated chicken.",
+      "Dum cook 25-30 min."
+    ]
+  },
+  {
+    "name": "gulab jamun",
+    "cuisine": "indian",
+    "prep_time_min": 15,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "khoya", "quantity": 200, "unit": "g"},
+      {"item": "flour", "quantity": 30, "unit": "g"},
+      {"item": "sugar syrup", "quantity": 300, "unit": "ml"}
+    ],
+    "steps": [
+      "Make dough balls, fry golden.",
+      "Soak in warm syrup 10 min."
+    ]
+  },
+
+
+  {
+    "name": "chicken teriyaki",
+    "cuisine": "japanese",
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "chicken thigh", "quantity": 300, "unit": "g"},
+      {"item": "teriyaki sauce", "quantity": 60, "unit": "ml"}
+    ],
+    "steps": [
+      "Sear chicken skin-side down.",
+      "Add sauce, reduce to glossy."
+    ]
+  },
+  {
+    "name": "miso soup",
+    "cuisine": "japanese",
+    "prep_time_min": 5,
+    "cook_time_min": 7,
+    "ingredients": [
+      {"item": "dashi", "quantity": 500, "unit": "ml"},
+      {"item": "miso paste", "quantity": 30, "unit": "g"},
+      {"item": "tofu", "quantity": 50, "unit": "g"}
+    ],
+    "steps": [
+      "Warm dashi.",
+      "Dissolve miso off heat.",
+      "Add tofu & scallion."
+    ]
+  },
+  {
+    "name": "yakisoba",
+    "cuisine": "japanese",
+    "prep_time_min": 10,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "soba noodles", "quantity": 200, "unit": "g"},
+      {"item": "cabbage", "quantity": 100, "unit": "g"},
+      {"item": "yakisoba sauce", "quantity": 50, "unit": "ml"}
+    ],
+    "steps": [
+      "Stir-fry veg & noodles.",
+      "Add sauce, toss."
+    ]
+  },
+  {
+    "name": "tonkatsu",
+    "cuisine": "japanese",
+    "prep_time_min": 15,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "pork cutlet", "quantity": 2, "unit": "count"},
+      {"item": "panko", "quantity": 50, "unit": "g"},
+      {"item": "egg", "quantity": 1, "unit": "count"}
+    ],
+    "steps": [
+      "Bread cutlets flour-egg-panko.",
+      "Deep-fry 170 °C 5 min each side."
+    ]
+  },
+  {
+    "name": "gyudon",
+    "cuisine": "japanese",
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "beef ribeye", "quantity": 200, "unit": "g"},
+      {"item": "onion", "quantity": 0.5, "unit": "count"},
+      {"item": "mirin", "quantity": 30, "unit": "ml"},
+      {"item": "soy sauce", "quantity": 30, "unit": "ml"}
+    ],
+    "steps": [
+      "Simmer onion, sauce, beef 8 min.",
+      "Serve over rice."
+    ]
+  },
+  {
+    "name": "tempura shrimp",
+    "cuisine": "japanese",
+    "prep_time_min": 15,
+    "cook_time_min": 5,
+    "ingredients": [
+      {"item": "shrimp", "quantity": 10, "unit": "count"},
+      {"item": "tempura batter", "quantity": 1, "unit": "cup"}
+    ],
+    "steps": [
+      "Dip shrimp in cold batter.",
+      "Fry 180 °C 2-3 min."
+    ]
+  },
+  {
+    "name": "okonomiyaki",
+    "cuisine": "japanese",
+    "prep_time_min": 15,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "cabbage", "quantity": 150, "unit": "g"},
+      {"item": "okonomiyaki batter", "quantity": 1, "unit": "cup"},
+      {"item": "pork belly", "quantity": 50, "unit": "g"}
+    ],
+    "steps": [
+      "Mix cabbage & batter.",
+      "Griddle both sides 5 min, top sauce & mayo."
+    ]
+  },
+  {
+    "name": "salmon sashimi don",
+    "cuisine": "japanese",
+    "prep_time_min": 10,
+    "cook_time_min": 0,
+    "ingredients": [
+      {"item": "sushi rice", "quantity": 250, "unit": "g"},
+      {"item": "salmon sashimi", "quantity": 120, "unit": "g"}
+    ],
+    "steps": [
+      "Serve salmon slices over seasoned rice."
+    ]
+  },
+  {
+    "name": "takoyaki",
+    "cuisine": "japanese",
+    "prep_time_min": 20,
+    "cook_time_min": 8,
+    "ingredients": [
+      {"item": "takoyaki batter", "quantity": 1, "unit": "cup"},
+      {"item": "octopus", "quantity": 50, "unit": "g"}
+    ],
+    "steps": [
+      "Fill pan wells with batter & octopus.",
+      "Turn until golden spheres."
+    ]
+  },
+  {
+    "name": "green tea ice cream",
+    "cuisine": "japanese",
+    "prep_time_min": 15,
+    "cook_time_min": 0,
+    "ingredients": [
+      {"item": "matcha powder", "quantity": 5, "unit": "g"},
+      {"item": "cream", "quantity": 250, "unit": "ml"},
+      {"item": "milk", "quantity": 150, "unit": "ml"},
+      {"item": "sugar", "quantity": 60, "unit": "g"}
+    ],
+    "steps": [
+      "Whisk matcha with warm milk.",
+      "Combine with cream & sugar, churn or freeze."
+    ]
+  },
+
+
+  {
+    "name": "pad thai",
+    "cuisine": "thai",
+    "prep_time_min": 15,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "rice noodles", "quantity": 200, "unit": "g"},
+      {"item": "shrimp", "quantity": 100, "unit": "g"},
+      {"item": "pad thai sauce", "quantity": 60, "unit": "ml"},
+      {"item": "bean sprouts", "quantity": 50, "unit": "g"}
+    ],
+    "steps": [
+      "Soak noodles.",
+      "Stir-fry shrimp, noodles, sauce, sprouts."
+    ]
+  },
+  {
+    "name": "green curry chicken",
+    "cuisine": "thai",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "ingredients": [
+      {"item": "chicken", "quantity": 300, "unit": "g"},
+      {"item": "green curry paste", "quantity": 30, "unit": "g"},
+      {"item": "coconut milk", "quantity": 400, "unit": "ml"},
+      {"item": "thai basil", "quantity": 5, "unit": "count"}
+    ],
+    "steps": [
+      "Fry paste, add coconut milk.",
+      "Simmer chicken 15 min, finish basil."
+    ]
+  },
+  {
+    "name": "tom yum soup",
+    "cuisine": "thai",
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "ingredients": [
+      {"item": "shrimp", "quantity": 120, "unit": "g"},
+      {"item": "tom yum paste", "quantity": 20, "unit": "g"},
+      {"item": "stock", "quantity": 500, "unit": "ml"}
+    ],
+    "steps": [
+      "Boil stock with paste & aromatics.",
+      "Add shrimp, cook 2 min, finish lime juice."
+    ]
+  },
+  {
+    "name": "massaman beef curry",
+    "cuisine": "thai",
+    "prep_time_min": 15,
+    "cook_time_min": 90,
+    "ingredients": [
+      {"item": "beef chuck", "quantity": 500, "unit": "g"},
+      {"item": "massaman paste", "quantity": 40, "unit": "g"},
+      {"item": "coconut milk", "quantity": 400, "unit": "ml"},
+      {"item": "potato", "quantity": 2, "unit": "count"}
+    ],
+    "steps": [
+      "Brown paste & beef.",
+      "Add coconut milk, simmer 1 h.",
+      "Add potatoes 30 min."
+    ]
+  },
+  {
+    "name": "som tam",
+    "cuisine": "thai",
+    "prep_time_min": 15,
+    "cook_time_min": 0,
+    "ingredients": [
+      {"item": "green papaya", "quantity": 200, "unit": "g"},
+      {"item": "chili", "quantity": 2, "unit": "count"},
+      {"item": "fish sauce", "quantity": 20, "unit": "ml"},
+      {"item": "lime", "quantity": 1, "unit": "count"}
+    ],
+    "steps": [
+      "Pound chili, garlic.",
+      "Add shredded papaya, season fish sauce, lime, palm sugar."
+    ]
+  },
+  {
+    "name": "pad see ew",
+    "cuisine": "thai",
+    "prep_time_min": 10,
+    "cook_time_min": 8,
+    "ingredients": [
+      {"item": "wide rice noodles", "quantity": 200, "unit": "g"},
+      {"item": "chinese broccoli", "quantity": 100, "unit": "g"},
+      {"item": "soy sauce", "quantity": 40, "unit": "ml"}
+    ],
+    "steps": [
+      "Sear noodles & broccoli on high heat, add soy."
+    ]
+  },
+  {
+    "name": "thai basil chicken",
+    "cuisine": "thai",
+    "prep_time_min": 8,
+    "cook_time_min": 8,
+    "ingredients": [
+      {"item": "ground chicken", "quantity": 250, "unit": "g"},
+      {"item": "thai basil", "quantity": 10, "unit": "g"},
+      {"item": "chilies", "quantity": 2, "unit": "count"},
+      {"item": "soy sauce", "quantity": 30, "unit": "ml"}
+    ],
+    "steps": [
+      "Stir-fry chicken with chili & garlic.",
+      "Add sauce, finish basil leaves."
+    ]
+  },
+  {
+    "name": "pineapple fried rice",
+    "cuisine": "thai",
+    "prep_time_min": 10,
+    "cook_time_min": 10,
+    "ingredients": [
+      {"item": "cooked rice", "quantity": 300, "unit": "g"},
+      {"item": "pineapple", "quantity": 80, "unit": "g"},
+      {"item": "shrimp", "quantity": 80, "unit": "g"},
+      {"item": "curry powder", "quantity": 3, "unit": "g"}
+    ],
+    "steps": [
+      "Stir-fry shrimp, rice, curry powder.",
+      "Add pineapple last minute."
+    ]
+  },
+  {
+    "name": "red curry duck",
+    "cuisine": "thai",
+    "prep_time_min": 15,
+    "cook_time_min": 25,
+    "ingredients": [
+      {"item": "roast duck", "quantity": 300, "unit": "g"},
+      {"item": "red curry paste", "quantity": 30, "unit": "g"},
+      {"item": "coconut milk", "quantity": 400, "unit": "ml"},
+      {"item": "lychee", "quantity": 50, "unit": "g"}
+    ],
+    "steps": [
+      "Simmer paste & coconut milk.",
+      "Add duck & lychee 10 min."
+    ]
+  },
+  {
+    "name": "mango sticky rice",
+    "cuisine": "thai",
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "ingredients": [
+      {"item": "glutinous rice", "quantity": 200, "unit": "g"},
+      {"item": "coconut milk", "quantity": 150, "unit": "ml"},
+      {"item": "mango", "quantity": 1, "unit": "count"}
+    ],
+    "steps": [
+      "Steam soaked rice.",
+      "Mix with sweet coconut milk.",
+      "Serve with sliced mango."
+    ]
+  }
+]
