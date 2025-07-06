@@ -1,7 +1,6 @@
-from tools.cuisine_tools import list_recipes
+from agents.cuisine_agent import chat
 
-# total list
-print(list_recipes.invoke({}))                        # empty dict → no filters
-
-# filter by cuisine
-print(list_recipes.invoke({"cuisine": "italian"}))
+print(chat(
+  "I have chicken, coconut milk and thai basil. "
+  "Which Thai dishes can I cook? Show top 3."
+))

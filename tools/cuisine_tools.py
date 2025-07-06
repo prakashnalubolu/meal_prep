@@ -32,6 +32,15 @@ def _match(a: str, b: str) -> bool:
 def _find(name: str) -> Optional[Dict]:
     return next((r for r in _load() if _match(name, r["name"])), None)
 
+def _can_make(recipe: Dict, pantry_items: set[str]) -> bool:
+    """True if *all* ingredient names are present in pantry_items."""
+    recipe_items = {ing["item"].lower() for ing in recipe["ingredients"]}
+    return recipe_items.issubset(pantry_items)
+
+def _normalize(name: str) -> str:
+    """Return the head noun for loose matching."""
+    return name.lower().split()[-1]       # last word
+
 # ── pretty ingredient formatter ────────────────────────────────────────────
 _plural_re = re.compile(r"([^aeiou]y|[sxz]|ch|sh)$", re.I)
 def _plural(word: str) -> str:
@@ -95,3 +104,59 @@ def delete_recipe(name: str) -> str:
         return f"⚠️ Recipe '{name}' not found."
     _save(new_db)
     return f"🗑️ Deleted recipe '{name}'."
+
+from heapq import nlargest
+
+@tool
+def find_recipes_by_items(
+    items: List[str],
+    cuisine: Optional[str] = None,
+    max_time: Optional[int] = None,
+    k: int = 5,
+) -> str:
+    """
+    Suggest up to *k* recipes that best match the given *items* list.
+
+    • Scoring = (# ingredients present) / (total ingredients)  
+    • Always returns the top-k recipes with non-zero score, sorted desc.
+
+    Optional filters:
+      • cuisine: e.g. "thai", "italian"
+      • max_time: prep+cook time in minutes
+    """
+    pantry = {i.lower().strip() for i in items}
+
+    recipes = _load()
+    if cuisine:
+        recipes = [r for r in recipes if r["cuisine"].lower() == cuisine.lower()]
+    if max_time is not None:
+        recipes = [
+            r for r in recipes
+            if r["prep_time_min"] + r["cook_time_min"] <= max_time
+        ]
+
+    scored: list[tuple[float, Dict]] = []
+    for r in recipes:
+        recipe_items = {_normalize(i["item"]) for i in r["ingredients"]}
+        pantry_norm  = {_normalize(i) for i in items}
+        score = len(recipe_items & pantry_norm) / len(recipe_items)
+        if score > 0:                              # keep only partial matches
+            scored.append((score, r))
+
+    if not scored:
+        return "📭 No recipes match those items."
+
+    # pick top-k by score, then faster total time, then name
+    best = nlargest(
+        k, scored,
+        key=lambda t: (t[0],                     # score desc
+                       -(t[1]["prep_time_min"] + t[1]["cook_time_min"]),  # shorter time
+                       t[1]["name"]),
+    )
+
+    lines = [
+        f"- {r['name'].title()} ({r['cuisine']}) "
+        f"— {round(score*100):>3}% ingredients covered"
+        for score, r in best
+    ]
+    return "\n".join(lines)

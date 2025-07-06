@@ -1,41 +1,78 @@
+# app.py  –  Streamlit UI for Pantry / Cuisine / Manager agents
 import streamlit as st
+
 from agents.pantry_agent  import chat as pantry_chat
 from agents.cuisine_agent import chat as cuisine_chat
+from agents.manager_agent import chat as manager_chat
+from tools.manager_tools   import memory          
 
+# ── 1  Page setup ───────────────────────────────────────────────────────────
 st.set_page_config(page_title="Kitchen Chat", page_icon="👩‍🍳", layout="centered")
 st.title("👩‍🍳 Kitchen Chat")
 
-agent_choice = st.radio(
+# ── 2  Agent selector ───────────────────────────────────────────────────────
+choice = st.radio(
     "Which assistant would you like to talk to?",
-    ("PantryAgent 🥫", "CuisineAgent 🍽️"),
+    ("PantryAgent 🥫", "CuisineAgent 🍽️", "ManagerAgent 🧑‍🍳"),
     horizontal=True,
 )
-agent = pantry_chat if agent_choice.startswith("Pantry") else cuisine_chat
-placeholder = ("Type a pantry request…" if agent is pantry_chat
-               else "Ask a recipe question…")
 
-# keep separate histories per agent
-key = "messages_pantry" if agent is pantry_chat else "messages_cuisine"
-if key not in st.session_state:
-    st.session_state[key] = []
+AGENT_MAP = {
+    "PantryAgent 🥫": (
+        pantry_chat,
+        "Type a pantry request (e.g., 'Add 2 onions')…"
+    ),
+    "CuisineAgent 🍽️": (
+        cuisine_chat,
+        "Ask a recipe question (e.g., 'Pad Thai recipe')…"
+    ),
+    "ManagerAgent 🧑‍🍳": (
+        manager_chat,
+        "Ask anything about meal prep (e.g., 'What Thai dishes can I cook with chicken?')…"
+    ),
+}
 
-for m in st.session_state[key]:
-    role   = "user" if m["role"] == "user" else "assistant"
-    avatar = "🙂" if role == "user" else "🤖"
+agent_func, placeholder = AGENT_MAP[choice]
+
+# ── 3  Per-agent chat history ──────────────────────────────────────────────
+hist_key = f"messages_{choice.split()[0].lower()}"   # messages_pantry / _cuisine / _manager
+if hist_key not in st.session_state:
+    st.session_state[hist_key] = []
+
+# ── 4  Sidebar: reset + memory view (only for Manager) ─────────────────────
+with st.sidebar:
+    if st.button("🔄 Refresh chat"):
+        # clear Streamlit histories
+        for k in list(st.session_state.keys()):
+            if k.startswith("messages_"):
+                del st.session_state[k]
+        # clear Manager’s short-term slots
+        memory.memories.clear()
+        st.rerun() 
+
+    if choice == "ManagerAgent 🧑‍🍳":
+        st.markdown("### Manager slots")
+        st.json(memory.memories)
+
+# ── 5  Render chat history ─────────────────────────────────────────────────
+for msg in st.session_state[hist_key]:
+    role, avatar = ("user", "🙂") if msg["role"] == "user" else ("assistant", "🤖")
     with st.chat_message(role, avatar=avatar):
-        st.markdown(m["content"])
+        st.markdown(msg["content"])
 
+# ── 6  Input box and agent invocation ──────────────────────────────────────
 prompt = st.chat_input(placeholder)
 if prompt:
-    st.session_state[key].append({"role": "user", "content": prompt})
+    # show user message
+    st.session_state[hist_key].append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="🙂"):
         st.markdown(prompt)
 
     try:
-        response = agent(prompt)
+        reply = agent_func(prompt)
     except Exception as e:
-        response = f"🚨 Error: {e}"
+        reply = f"🚨 Error: {e}"
 
-    st.session_state[key].append({"role": "assistant", "content": response})
+    st.session_state[hist_key].append({"role": "assistant", "content": reply})
     with st.chat_message("assistant", avatar="🤖"):
-        st.markdown(response)
+        st.markdown(reply)

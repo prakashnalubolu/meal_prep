@@ -12,6 +12,7 @@ from tools.cuisine_tools import (
     list_recipes,
     add_recipe,
     delete_recipe,
+    find_recipes_by_items,
 )
 
 load_dotenv()
@@ -24,7 +25,7 @@ llm = ChatGoogleGenerativeAI(
 )
 
 # ── 2. Tools list ──────────────────────────────────────────────────────────
-TOOLS = [get_recipe, list_recipes, add_recipe, delete_recipe]
+TOOLS = [get_recipe, list_recipes, add_recipe, delete_recipe,find_recipes_by_items]
 TOOL_NAMES = ", ".join(t.name for t in TOOLS)
 # ── 3. Build the prompt that embeds every tool’s JSON schema ──────────────
 #     (no manual prompt writing!)
