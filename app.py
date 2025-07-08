@@ -39,28 +39,13 @@ hist_key = f"messages_{choice.split()[0].lower()}"   # messages_pantry / _cuisin
 if hist_key not in st.session_state:
     st.session_state[hist_key] = []
 
-# ── 4  Sidebar: reset + memory view (only for Manager) ─────────────────────
-with st.sidebar:
-    if st.button("🔄 Refresh chat"):
-        # clear Streamlit histories
-        for k in list(st.session_state.keys()):
-            if k.startswith("messages_"):
-                del st.session_state[k]
-        # clear Manager’s short-term slots
-        memory.memories.clear()
-        st.rerun() 
-
-    if choice == "ManagerAgent 🧑‍🍳":
-        st.markdown("### Manager slots")
-        st.json(memory.memories)
-
-# ── 5  Render chat history ─────────────────────────────────────────────────
+# ── 4  Render chat history ─────────────────────────────────────────────────
 for msg in st.session_state[hist_key]:
     role, avatar = ("user", "🙂") if msg["role"] == "user" else ("assistant", "🤖")
     with st.chat_message(role, avatar=avatar):
         st.markdown(msg["content"])
 
-# ── 6  Input box and agent invocation ──────────────────────────────────────
+# ── 5  Input box and agent invocation ──────────────────────────────────────
 prompt = st.chat_input(placeholder)
 if prompt:
     # show user message
@@ -76,3 +61,18 @@ if prompt:
     st.session_state[hist_key].append({"role": "assistant", "content": reply})
     with st.chat_message("assistant", avatar="🤖"):
         st.markdown(reply)
+
+# ── 6  Sidebar: reset + memory view (only for Manager) ─────────────────────
+with st.sidebar:
+    if st.button("🔄 Refresh chat"):
+        # clear Streamlit histories
+        for k in list(st.session_state.keys()):
+            if k.startswith("messages_"):
+                del st.session_state[k]
+        # clear Manager’s short-term slots
+        memory.memories.clear()
+        st.rerun() 
+
+    if choice == "ManagerAgent 🧑‍🍳":
+        st.markdown("### Manager slots")
+        st.json(memory.memories)

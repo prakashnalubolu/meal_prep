@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os
+import os, re
 from dotenv import load_dotenv
 import time
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -65,7 +65,10 @@ Routing rules:
    Action: missing_ingredients
    Action Input: "egg fried rice"
    Never wrap it like a python call.
-6. After completing all necessary calls, end with exactly one Final Answer: <your concise reply>
+6.  If the user says “the first / second / third dish” and recent_dishes
+    contains enough items, replace it with that dish name automatically.
+
+7. After completing all necessary calls, end with exactly one Final Answer: <your concise reply>
 
 Thought: …
 Action: <{tool_names}>
@@ -83,7 +86,7 @@ Question: {input}
 
 PROMPT = PromptTemplate(
     template       = template,
-    input_variables= ["input", "agent_scratchpad", "tools", "tool_names"],
+    input_variables= ["input", "agent_scratchpad", "tools", "tool_names", "memories"],
 )
 
 # ── 4  Build ReAct manager agent ───────────────────────────────────────────
@@ -104,9 +107,48 @@ manager_agent = AgentExecutor(
     handle_parsing_errors = True,
     verbose               = True,
 )
+# Spoken ordinals → list index (0-based)
+ORDINAL_MAP = {
+    "first": 0, "1st": 0,
+    "second": 1, "2nd": 1,
+    "third": 2, "3rd": 2,
+    "fourth": 3, "4th": 3,
+    "fifth": 4, "5th": 4,}
+ORDINAL_TARGETS = r"(dish|one|recipe|option)" 
+PRONOUNS = ["this dish", "that dish", "current dish", "it"]
 
-# ── 5  Convenience wrapper --------------------------------------------------
+def _replace_ordinals_and_pronouns(msg: str) -> str:
+    """
+    •  Replaces “the first / second / … dish” with the recipe name from
+       memory['recent_dishes'].
+    •  Replaces “this dish / that dish / it / current dish” with
+       memory['current_dish'].
+
+    Returns the transformed string (original unchanged if no match).
+    """
+    text = msg
+    # ---- ordinal replacements ---------------------------------------------
+    if "recent_dishes" in memory.memories:
+        for word, idx in ORDINAL_MAP.items():
+            pattern = rf"\bthe\s+{word}\s+{ORDINAL_TARGETS}\b"
+            if re.search(pattern, text, flags=re.I):
+                try:
+                    dish = memory.memories["recent_dishes"][idx]
+                    text = re.sub(pattern, dish, text, flags=re.I)
+                except IndexError:
+                    pass  # user asked for 4th but we only have 3 → leave as-is
+
+    # ---- pronoun replacements ---------------------------------------------
+    cd = memory.memories.get("current_dish")
+    if cd:
+        for p in PRONOUNS:
+            text = re.sub(rf"\b{p}\b", cd, text, flags=re.I)
+
+    return text
+
+#  5  Convenience wrapper --------------------------------------------------
 def chat(message: str) -> str:
     """Send a user message through the manager and return its reply."""
-    ensure_fresh_inventory()              # ← refresh cache if stale
-    return manager_agent.invoke({"input": message})["output"]
+    ensure_fresh_inventory()             
+    message = _replace_ordinals_and_pronouns(message) 
+    return manager_agent.invoke({"input": message, "memories": memory.memories})["output"]

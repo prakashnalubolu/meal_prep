@@ -7,8 +7,40 @@ from langchain.memory import SimpleMemory
 from difflib import get_close_matches 
 from tools.cuisine_tools import _load 
 
-# ── Session-scoped memory ---------------------------------------------------
-memory = SimpleMemory(memories={})  
+# ----------------------------------------------------------
+memory = SimpleMemory(memories={})      
+# ----------------------------------------------------------
+
+def _push_recent(dish: str, limit: int = 10):
+    lst = memory.memories.setdefault("recent_dishes", [])
+    if dish not in lst:          
+        lst.append(dish)
+        if len(lst) > limit:
+            del lst[0]
+    memory.memories["current_dish"] = dish
+
+
+def _capture_possible_dish(text: str):
+    """Find one recipe name in free-text (user or agent) and store it."""
+    clean = re.sub(r"[-*•]\s*", "", text.lower()).strip()
+    m = re.search(r"(?:cook|make|prepare|try)\s+(.+?)(?:[,?.!]|$)", clean)
+    guess = m.group(1).strip() if m else clean
+
+    names = [r["name"].lower() for r in _load()]
+    match = get_close_matches(guess, names, n=1, cutoff=0.6)
+    if match:
+        dish = match[0]
+        memory.memories["current_dish"] = dish
+        _push_recent(dish)
+
+def _capture_dish_list(text: str):
+    names = {r["name"].lower() for r in _load()}
+    for chunk in re.split(r"[,\n]", text):
+        cand = re.sub(r"^[\d\-\*•.]+\s*", "", chunk.lower()).split("(")[0].strip()
+        if cand in names:
+            _push_recent(cand)
+
+
 
 def _parse_inventory(text: str) -> list[str]:
     """
@@ -46,49 +78,37 @@ import time
 
 @tool
 def call_pantry(message: str) -> str:
-    """Forward *message* to PantryAgent and keep the inventory cache fresh."""
+    """Forward *message* to PantryAgent and refresh inventory cache."""
+    _capture_possible_dish(message)       
     reply = _pantry_chat(message)
 
     if message.lower().startswith("list"):
-        # ── user explicitly listed the pantry ───────────────────────────────
         items = _parse_inventory(reply)
-        memory.memories["last_inventory_items"] = items
-        memory.memories["inv_timestamp"]        = time.time()
-
+        memory.memories.update({
+            "last_inventory_items": items,
+            "inv_timestamp": time.time(),
+        })
     elif message.lower().startswith(("add", "remove", "update")):
-        # ── CRUD happened – run an immediate "list pantry" to refresh cache ─
-        inv_txt = _pantry_chat("list pantry")                    
+        inv_txt = _pantry_chat("list pantry")
         items   = _parse_inventory(inv_txt)
-        memory.memories["last_inventory_items"] = items
-        memory.memories["inv_timestamp"]        = time.time()
-
+        memory.memories.update({
+            "last_inventory_items": items,
+            "inv_timestamp": time.time(),
+        })
     return reply
-
-
-def _capture_possible_dish(user_msg: str):
-    # try to grab words after verbs like “cook” / “make”
-    m = re.search(r"(?:cook|make|prepare|try)\s+(.+?)(?:[?.!]|$)",
-                  user_msg, re.I)
-    guess = m.group(1).strip() if m else user_msg.strip()
-
-    # fuzzy-match against recipe names in recipe.json
-    names = [r["name"].lower() for r in _load()]
-    match = get_close_matches(guess.lower(), names, n=1, cutoff=0.6)
-    if match:
-        memory.memories["current_dish"] = match[0] 
 
 @tool
 def call_cuisine(message: str) -> str:
-    """Forward *message* to CuisineAgent and return its reply."""
+    """Forward *message* to CuisineAgent and update dish memory."""
+    _capture_possible_dish(message)        # user prompt
     reply = _cuisine_chat(message)
-
-    # keep current_dish if recipe returned
+    _capture_dish_list(reply)              # bullet / numbered list
+    # if reply contains exactly one **RecipeName**
     m = re.search(r"\*\*(.+?)\*\*", reply)
     if m:
-        memory.memories["current_dish"] = m.group(1).strip().lower()
-    else:
-        _capture_possible_dish(message) 
-
+        dish = m.group(1).strip().lower()
+        memory.memories["current_dish"] = dish        # focus!
+        _push_recent(dish)
     return reply
 
 _word_re = re.compile(r"[a-zA-Z]+")
@@ -110,7 +130,9 @@ def _extract_ing_names(recipe_txt: str) -> set[str]:
                 names.add(_singular(two))       
     return names
 
-DESCRIPTORS = {"cooked", "fresh", "dried", "ground", "chopped", "sliced", "large","medium", "small", "whole", "raw", "ripe", "frozen", "canned", "baked", "steamed", "boiled", "grilled", "roasted"}
+DESCRIPTORS = {"cooked", "fresh", "dried", "ground", "chopped", "sliced", "large","medium", 
+               "small", "whole", "raw", "ripe", "frozen", "canned", "baked", "steamed", "boiled", "grilled", "roasted",
+               "g","kg","ml","l"}
 
 def _normalise(name: str) -> str:
     """strip leading descriptors, lower-case, singularise."""
