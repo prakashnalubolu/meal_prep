@@ -3,8 +3,10 @@ import streamlit as st
 
 from agents.pantry_agent  import chat as pantry_chat
 from agents.cuisine_agent import chat as cuisine_chat
-from agents.manager_agent import chat as manager_chat
-from tools.manager_tools   import memory          
+from agents.manager_agent import chat as manager_chat, chat_memory
+from tools.manager_tools   import memory  
+from langchain.schema import HumanMessage
+    
 
 # ── 1  Page setup ───────────────────────────────────────────────────────────
 st.set_page_config(page_title="Kitchen Chat", page_icon="👩‍🍳", layout="centered")
@@ -76,3 +78,11 @@ with st.sidebar:
     if choice == "ManagerAgent 🧑‍🍳":
         st.markdown("### Manager slots")
         st.json(memory.memories)
+        st.markdown("### Conversation buffer (last messages)")
+        hist = chat_memory.load_memory_variables({})["chat_history"]
+
+        # A very compact, one-line-per-turn view
+        for m in hist[-10:]:               
+            role   = "user"      if isinstance(m, HumanMessage) else "assistant"
+            avatar = "🧑‍💬"      if role == "user" else "🤖"
+            st.markdown(f"*{role} {m.content[:80]}…*")   

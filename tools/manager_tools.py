@@ -6,6 +6,7 @@ from langchain_core.tools import tool
 from langchain.memory import SimpleMemory
 from difflib import get_close_matches 
 from tools.cuisine_tools import _load 
+from difflib import SequenceMatcher
 
 # ----------------------------------------------------------
 memory = SimpleMemory(memories={})      
@@ -27,7 +28,7 @@ def _capture_possible_dish(text: str):
     guess = m.group(1).strip() if m else clean
 
     names = [r["name"].lower() for r in _load()]
-    match = get_close_matches(guess, names, n=1, cutoff=0.6)
+    match = get_close_matches(guess, names, n=1, cutoff=0.95)
     if match:
         dish = match[0]
         memory.memories["current_dish"] = dish
@@ -97,37 +98,50 @@ def call_pantry(message: str) -> str:
         })
     return reply
 
+
+_SIM_THRESHOLD = 0.85 
 @tool
 def call_cuisine(message: str) -> str:
-    """Forward *message* to CuisineAgent and update dish memory."""
-    _capture_possible_dish(message)        # user prompt
+    """Forward *message* to CuisineAgent and refresh inventory cache."""
+    _capture_possible_dish(message)
     reply = _cuisine_chat(message)
-    _capture_dish_list(reply)              # bullet / numbered list
-    # if reply contains exactly one **RecipeName**
+
+    # --- similarity guard --------------------------------------------------
     m = re.search(r"\*\*(.+?)\*\*", reply)
     if m:
-        dish = m.group(1).strip().lower()
-        memory.memories["current_dish"] = dish        # focus!
-        _push_recent(dish)
+        recipe_name = m.group(1).strip().lower()
+        # strip helper words from the original user message
+        requested = re.sub(r"(?:recipe|how to (?:cook|make))", "",
+                           message, flags=re.I).strip().lower()
+        if SequenceMatcher(None, recipe_name, requested).ratio() < _SIM_THRESHOLD:
+            # treat as 'not found' -> ask CuisineAgent for suggestions
+            alt = _cuisine_chat(f'suggest_similar "{requested}" top_k=5')
+            return ("Apologies — I don’t have an exact recipe for that dish.\n\n"
+                    f"Here are some close alternatives you could try:\n{alt}")
+
+        _push_recent(recipe_name)  # we accept it as a good match
+
+    _capture_dish_list(reply)
     return reply
 
 _word_re = re.compile(r"[a-zA-Z]+")
-
+BULLET = re.compile(r"^\s*([-*•]|•|\d+\.)\s*")
 def _singular(word: str) -> str:
     return word[:-1] if word.endswith("s") else word
-
+ 
 def _extract_ing_names(recipe_txt: str) -> set[str]:
+    """Return the set of (raw) ingredient names found in recipe bullets."""
     names: set[str] = set()
     for line in recipe_txt.splitlines():
-        if line.lstrip().startswith("-"):
-            words = [w.lower() for w in _word_re.findall(line)]
-            if not words:
-                continue
-            last = _singular(words[-1])
-            names.add(last)                    
-            if len(words) >= 2:
-                two = " ".join(words[-2:])
-                names.add(_singular(two))       
+        if not BULLET.match(line):
+            continue                    # not a list item
+        words = [w.lower() for w in _word_re.findall(line)]
+        if not words:
+            continue
+        last = _singular(words[-1])
+        names.add(last)
+        if len(words) >= 2:
+            names.add(_singular(" ".join(words[-2:])))
     return names
 
 DESCRIPTORS = {"cooked", "fresh", "dried", "ground", "chopped", "sliced", "large","medium", 
@@ -149,41 +163,47 @@ def _normalise(name: str) -> str:
 @tool
 def missing_ingredients(dish: str) -> str:
     """
-    List which ingredients for *dish* are NOT in the cached pantry.
-    Returns a friendly sentence; if nothing is missing, says so.
+    Tell the user which ingredients for *dish* are not in their pantry.
     """
 
-    # 1) get cached inventory — refresh once if absent
+    # --- ensure we have an up-to-date pantry snapshot ----------------------
     inv_items = memory.memories.get("last_inventory_items")
     if inv_items is None:
-        _ = call_pantry("list pantry")            # populates memory
+        _ = call_pantry("list pantry")
         inv_items = memory.memories.get("last_inventory_items", [])
 
     pantry = {_normalise(it) for it in inv_items}
 
-    # fetch full recipe (fuzzy capture handled in call_cuisine)
+    # --- fetch recipe ------------------------------------------------------
     recipe_txt = call_cuisine(f"get_recipe {dish}")
-    if "Ingredients" not in recipe_txt:                   # ⇦  new robust fallback
-        # try forcing the cuisine agent to send the bullet version
-        recipe_txt = call_cuisine(f'give ingredients list only for "{dish}"')
+    if "Ingredients" not in recipe_txt:          # fallback: bullets only
+        recipe_txt = call_cuisine(
+            f'give ingredients list only for "{dish}"'
+        )
 
-    # if the cuisine agent couldn’t find the recipe, bubble up the warning
     if recipe_txt.strip().startswith("⚠️"):
-        return recipe_txt
+        return recipe_txt                        # CuisineAgent already apologised
 
-    need     = _extract_ing_names(recipe_txt)
-    # map each raw ingredient to its normalised key
-    collapsed: dict[str, str] = {}
+    need = _extract_ing_names(recipe_txt)
+    if not need:                                # still couldn’t read list
+        return (f"Sorry, I couldn’t read the ingredient list for "
+                f"{dish.title()}. Could you try another recipe?")
+
+    # --- compare -----------------------------------------------------------
+    collapsed = {}
     for item in need:
         base = _normalise(item)
         collapsed[base] = min(collapsed.get(base, item), item, key=len)
-    need = set(collapsed.values())
-    missing = sorted({base: item for item in need if (base := _normalise(item)) not in pantry}.values())  
 
+    missing = sorted(
+        {base: pretty for pretty in need
+         if (base := _normalise(pretty)) not in pantry}.values()
+    )
+
+    # --- user-friendly response -------------------------------------------
     if not missing:
         return f"You already have every ingredient for {dish.title()}!"
     if len(missing) == 1:
-        return f"You'll still need {missing[0]} to cook {dish.title()}."
-
+        return (f"You'll still need {missing[0]} " f" to cook {dish.title()}.")
     *rest, last = missing
-    return f"You'll still need {', '.join(rest)} and {last} to cook {dish.title()}."
+    return (f"You'll still need {', '.join(rest)} and {last}" f" to cook {dish.title()}.")
