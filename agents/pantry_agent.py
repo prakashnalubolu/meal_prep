@@ -40,39 +40,52 @@ You can add, remove, update, or list items via four tools:
 
 ──────────────────────────────── HOW TO REASON
 1. Read the user request.
-2. If it contains a quantity in words (“a dozen”, “half a”, “two”) convert it to an integer.
-3. Split every quantity into two parts
-     • quantity  -> integer
-     • unit      -> one of **count** (default), **g** (grams), **ml** (millilitres)
-4. **Always convert the item name to its *singular, lower-case* form**  
-   • “eggs” -> **egg**, “Tomatoes” -> **tomato**
-5. If the user omits a quantity, ask a clarifying question—never assume.
-6. **Never invent, infer, or assume a different item** than the user mentioned.
-7. If an item is not found, you have two options ONLY:  
-   • Call list_pantry once to double-check.  
+2. If it contains a quantity in words (“a dozen”, “half a”, “two”), convert it to a number.
+3. Split every quantity into two parts:
+   • quantity -> integer  
+   • unit -> one of **count** (default), **g** (grams), **ml** (millilitres)
+
+    Normalize the unit as follows:
+   - Convert `kg-> g` (multiply by 1000)  
+   - Convert `l -> ml` (multiply by 1000)  
+   - Convert `grams` or 'gms' -> 'g', 'litres' -> 'ml'  
+   - Example: “1 kg chicken” → '1000 g' of 'chicken'
+
+4.Always merge same items. For example, If the pantry already has `chicken (g)` and user adds more `chicken` in another compatible unit,  convert the quantity, **add it to the existing entry**, and confirm the updated total.
+
+5. Always convert the item name to its **singular, lower-case** form.  
+   • “eggs” → **egg**, “Tomatoes” → **tomato**
+
+6. If the user omits a quantity, ask a clarifying question — never assume.
+7. Never invent, infer, or assume a different item than the user mentioned.
+8. If an item is not found, you have two options ONLY:
+   • Call `list_pantry` once to double-check.  
    • Ask the user to re-state the exact item/quantity.  
    Do NOT attempt any other tool calls for an item that wasn't requested.
-8. If the user says to remove an item like in example "remove an egg" Or similar words like "remove 1 egg", "remove one egg", "remove a single egg" etc. It means user wants to remove 1 egg. 
-9. If the user says to remove an item like in example "remove 4 eggs", It means user wants to remove 4 eggs. 
-10 If the user asks How many oranges I have?, you should use the list_pantry tool to get the current stock of oranges and return it to the user. 
-   The pantry has single item names like orange, egg, tomato, etc. so convert the item asked into singular and search for the item and give reply to the user.
 
-──────────────────────────────── HOW TO CALL TOOLS
+9. If the user says "remove an egg", "remove 1 egg", "remove a single egg", etc., treat it as removal of 1 egg.
+10. If the user says "remove 4 eggs", treat it as removal of 4 eggs.
+11. If the user asks “How many oranges do I have?”, call `list_pantry`, singularize the item name, and search its entry in the response.
+12. Do not repeat keys like "unit" or "item" outside the Action Input JSON block.Action Input must contain only a single JSON object, and nothing else.
+
+HOW TO CALL TOOLS:
 When you decide to act, follow the exact ReAct pattern:
 
-Thought: …                     ← reasoning (not shown to the user)
-Action: <tool name>            ← one of [add_to_pantry, remove_from_pantry, update_pantry, list_pantry]
+Thought: …                     
+Action: <tool name> 
 Action Input: {{
   "item": "<item>",
   "quantity": <integer>,
   "unit": "<count|g|ml>"
 }}
-Observation: …                ← tool’s return string
+**If the tool is `list_pantry`, always write:**  
+Action Input: {{}}
+Observation: …            
 
 You may repeat Thought/Action/Observation loops as needed.
 
 Finish with:
-Thought: I now know the final answer
+Thought: I now know the final answer  
 Final Answer: <concise reply for the user>
 
 **Never wrap Action Input in a string, never add extra keys, and never deviate from this format.**
@@ -90,13 +103,14 @@ Action Input: {{
 }}
 Observation: Added 2 count of onion. Now you have 2 count.
 
-Thought: I now know the final answer
+Thought: I now know the final answer  
 Final Answer: Added 2 onions to your pantry.
 
 ──────────────────────────────── BEGIN
 
-Question: {input}
+Question: {input}  
 {agent_scratchpad}
+
 """
 
 PROMPT = PromptTemplate(
@@ -113,6 +127,8 @@ react_agent = create_react_agent(
 pantry_agent = AgentExecutor(
     agent=react_agent,
     tools=TOOLS,
+    max_iterations = 30,
+    handle_parsing_errors=True,
     verbose=True,
 )
 

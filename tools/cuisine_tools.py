@@ -41,6 +41,10 @@ def _normalize(name: str) -> str:
     """Return the head noun for loose matching."""
     return name.lower().split()[-1]       # last word
 
+def diet_ok(recipe_diet, wanted):
+    table = {"veg":0, "eggtarian":1, "non-veg":2}
+    return table[recipe_diet] <= table[wanted]
+
 # ── pretty ingredient formatter ────────────────────────────────────────────
 _plural_re = re.compile(r"([^aeiou]y|[sxz]|ch|sh)$", re.I)
 def _plural(word: str) -> str:
@@ -112,6 +116,7 @@ def find_recipes_by_items(
     items: List[str],
     cuisine: Optional[str] = None,
     max_time: Optional[int] = None,
+    diet: str | None = None,
     k: int = 5,
 ) -> str:
     """
@@ -121,12 +126,15 @@ def find_recipes_by_items(
     • Always returns the top-k recipes with non-zero score, sorted desc.
 
     Optional filters:
-      • cuisine: e.g. "thai", "italian"
-      • max_time: prep+cook time in minutes
+        • cuisine: e.g. "thai", "italian"
+        • max_time: prep+cook time in minutes
+        • diet: "veg", "eggtarian", "non-veg"
     """
     pantry = {i.lower().strip() for i in items}
 
     recipes = _load()
+    if diet:
+        recipes = [r for r in recipes if diet_ok(r["diet"], diet)]
     if cuisine:
         recipes = [r for r in recipes if r["cuisine"].lower() == cuisine.lower()]
     if max_time is not None:

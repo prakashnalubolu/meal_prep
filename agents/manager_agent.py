@@ -8,6 +8,7 @@ from langchain_core.prompts import PromptTemplate
 from tools.manager_tools import call_pantry, call_cuisine, missing_ingredients, memory as slot_memory
 from langchain.memory import ConversationSummaryBufferMemory
 
+
 load_dotenv()
 
 # ── 1  LLM ──────────────────────────────────────────────────────────────────
@@ -117,7 +118,7 @@ react_agent = create_react_agent(
 manager_agent = AgentExecutor(
     agent                 = react_agent,
     tools                 = TOOLS,
-    max_iterations        = 6,
+    max_iterations        = 35,
     memory = chat_memory,
     handle_parsing_errors = True,
     verbose               = True,

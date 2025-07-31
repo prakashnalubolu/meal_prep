@@ -1,7 +1,5 @@
 """Wrapper tools so ManagerAgent can call PantryAgent & CuisineAgent and keep a short-term slot memory (current dish, last inventory)."""
-
 import re
-from typing import List
 from langchain_core.tools import tool
 from langchain.memory import SimpleMemory
 from difflib import get_close_matches 

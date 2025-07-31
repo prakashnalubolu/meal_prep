@@ -3,6 +3,7 @@
   {
     "name": "spaghetti carbonara",
     "cuisine": "italian",
+    "diet": "eggtarian" ,
     "prep_time_min": 10,
     "cook_time_min": 20,
     "ingredients": [
@@ -21,6 +22,7 @@
   {
     "name": "margherita pizza",
     "cuisine": "italian",
+    "diet": "vegetarian" ,
     "prep_time_min": 20,
     "cook_time_min": 12,
     "ingredients": [
@@ -39,6 +41,7 @@
   {
     "name": "pesto penne",
     "cuisine": "italian",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 15,
     "ingredients": [
@@ -54,6 +57,7 @@
   {
     "name": "risotto milanese",
     "cuisine": "italian",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 25,
     "ingredients": [
@@ -71,6 +75,7 @@
   {
     "name": "lasagna al forno",
     "cuisine": "italian",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 25,
     "cook_time_min": 45,
     "ingredients": [
@@ -90,6 +95,7 @@
     "cuisine": "italian",
     "prep_time_min": 10,
     "cook_time_min": 0,
+    "diet": "vegetarian" ,
     "ingredients": [
       {"item": "tomato", "quantity": 2, "unit": "count"},
       {"item": "mozzarella", "quantity": 125, "unit": "g"},
@@ -100,6 +106,7 @@
   {
     "name": "eggplant parmigiana",
     "cuisine": "italian",
+    "diet": "vegetarian" ,
     "prep_time_min": 20,
     "cook_time_min": 35,
     "ingredients": [
@@ -117,6 +124,7 @@
   {
     "name": "spaghetti aglio e olio",
     "cuisine": "italian",
+    "diet": "vegetarian" ,
     "prep_time_min": 5,
     "cook_time_min": 12,
     "ingredients": [
@@ -133,6 +141,7 @@
   {
     "name": "gnocchi al pomodoro",
     "cuisine": "italian",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 12,
     "ingredients": [
@@ -148,6 +157,7 @@
   {
     "name": "tiramisù",
     "cuisine": "italian",
+    "diet": "vegetarian" ,
     "prep_time_min": 20,
     "cook_time_min": 0,
     "ingredients": [
@@ -166,6 +176,7 @@
   {
     "name": "kung pao chicken",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 15,
     "ingredients": [
@@ -182,6 +193,7 @@
   {
     "name": "mapo tofu",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 12,
     "ingredients": [
@@ -199,6 +211,7 @@
   {
     "name": "chow mein",
     "cuisine": "chinese",
+    "diet": "eggtarian" ,
     "prep_time_min": 10,
     "cook_time_min": 8,
     "ingredients": [
@@ -214,6 +227,7 @@
   {
     "name": "sweet and sour pork",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 20,
     "cook_time_min": 15,
     "ingredients": [
@@ -230,6 +244,7 @@
   {
     "name": "egg fried rice",
     "cuisine": "chinese",
+    "diet": "eggtarian" ,
     "prep_time_min": 5,
     "cook_time_min": 10,
     "ingredients": [
@@ -246,6 +261,7 @@
   {
     "name": "steamed fish with ginger",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 12,
     "ingredients": [
@@ -261,6 +277,7 @@
   {
     "name": "hot and sour soup",
     "cuisine": "chinese",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 15,
     "ingredients": [
@@ -278,6 +295,7 @@
   {
     "name": "beef and broccoli",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 12,
     "cook_time_min": 8,
     "ingredients": [
@@ -293,6 +311,7 @@
   {
     "name": "dan dan noodles",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 10,
     "ingredients": [
@@ -309,6 +328,7 @@
   {
     "name": "char siu pork",
     "cuisine": "chinese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 30,
     "ingredients": [
@@ -324,6 +344,7 @@
   {
     "name": "butter chicken",
     "cuisine": "indian",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 25,
     "cook_time_min": 35,
     "ingredients": [
@@ -342,6 +363,7 @@
   {
     "name": "chana masala",
     "cuisine": "indian",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 25,
     "ingredients": [
@@ -359,6 +381,7 @@
   {
     "name": "palak paneer",
     "cuisine": "indian",
+    "diet": "vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 15,
     "ingredients": [
@@ -375,6 +398,7 @@
   {
     "name": "dal tadka",
     "cuisine": "indian",
+    "diet": "vegetarian" ,
     "prep_time_min": 5,
     "cook_time_min": 30,
     "ingredients": [
@@ -390,6 +414,7 @@
   {
     "name": "aloo gobi",
     "cuisine": "indian",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 20,
     "ingredients": [
@@ -405,6 +430,7 @@
   {
     "name": "masala dosa",
     "cuisine": "indian",
+    "diet": "vegetarian" ,
     "prep_time_min": 20,
     "cook_time_min": 10,
     "ingredients": [
@@ -419,6 +445,7 @@
   {
     "name": "rogan josh",
     "cuisine": "indian",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 60,
     "ingredients": [
@@ -434,6 +461,7 @@
   {
     "name": "fish curry",
     "cuisine": "indian",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 20,
     "ingredients": [
@@ -447,8 +475,9 @@
     ]
   },
   {
-    "name": "biryani",
+    "name": "chicken biryani",
     "cuisine": "indian",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 30,
     "cook_time_min": 40,
     "ingredients": [
@@ -465,6 +494,7 @@
   {
     "name": "gulab jamun",
     "cuisine": "indian",
+    "diet": "vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 15,
     "ingredients": [
@@ -482,6 +512,7 @@
   {
     "name": "chicken teriyaki",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 15,
     "ingredients": [
@@ -496,6 +527,7 @@
   {
     "name": "miso soup",
     "cuisine": "japanese",
+    "diet": "vegetarian" ,
     "prep_time_min": 5,
     "cook_time_min": 7,
     "ingredients": [
@@ -512,6 +544,7 @@
   {
     "name": "yakisoba",
     "cuisine": "japanese",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 10,
     "ingredients": [
@@ -527,6 +560,7 @@
   {
     "name": "tonkatsu",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 10,
     "ingredients": [
@@ -542,6 +576,7 @@
   {
     "name": "gyudon",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 5,
     "cook_time_min": 10,
     "ingredients": [
@@ -558,6 +593,7 @@
   {
     "name": "tempura shrimp",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 5,
     "ingredients": [
@@ -572,6 +608,7 @@
   {
     "name": "okonomiyaki",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 10,
     "ingredients": [
@@ -587,6 +624,7 @@
   {
     "name": "salmon sashimi don",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 0,
     "ingredients": [
@@ -600,6 +638,7 @@
   {
     "name": "takoyaki",
     "cuisine": "japanese",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 20,
     "cook_time_min": 8,
     "ingredients": [
@@ -614,6 +653,7 @@
   {
     "name": "green tea ice cream",
     "cuisine": "japanese",
+    "diet": "vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 0,
     "ingredients": [
@@ -632,6 +672,7 @@
   {
     "name": "pad thai",
     "cuisine": "thai",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 10,
     "ingredients": [
@@ -649,6 +690,7 @@
     "name": "green curry chicken",
     "cuisine": "thai",
     "prep_time_min": 10,
+    "diet": "non-vegetarian" ,
     "cook_time_min": 20,
     "ingredients": [
       {"item": "chicken", "quantity": 300, "unit": "g"},
@@ -664,6 +706,7 @@
   {
     "name": "tom yum soup",
     "cuisine": "thai",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 15,
     "ingredients": [
@@ -679,6 +722,7 @@
   {
     "name": "massaman beef curry",
     "cuisine": "thai",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 90,
     "ingredients": [
@@ -696,6 +740,7 @@
   {
     "name": "som tam",
     "cuisine": "thai",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 0,
     "ingredients": [
@@ -712,6 +757,7 @@
   {
     "name": "pad see ew",
     "cuisine": "thai",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 8,
     "ingredients": [
@@ -726,6 +772,7 @@
   {
     "name": "thai basil chicken",
     "cuisine": "thai",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 8,
     "cook_time_min": 8,
     "ingredients": [
@@ -740,7 +787,8 @@
     ]
   },
   {
-    "name": "pineapple fried rice",
+    "name": "pineapple shrimp fried rice",
+    "diet": "non-vegetarian" ,
     "cuisine": "thai",
     "prep_time_min": 10,
     "cook_time_min": 10,
@@ -758,6 +806,7 @@
   {
     "name": "red curry duck",
     "cuisine": "thai",
+    "diet": "non-vegetarian" ,
     "prep_time_min": 15,
     "cook_time_min": 25,
     "ingredients": [
@@ -774,6 +823,7 @@
   {
     "name": "mango sticky rice",
     "cuisine": "thai",
+    "diet": "vegetarian" ,
     "prep_time_min": 10,
     "cook_time_min": 20,
     "ingredients": [

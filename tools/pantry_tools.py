@@ -96,16 +96,21 @@ from langchain_core.tools import tool
 # ---- helpers -----------------------------------------------------------
 def _parse_payload(payload: str) -> dict:
     """
-    LangChain passes the agent's Action Input as a raw JSON string.
-    This helper converts it to a Python dict and raises a clear error
-    if the payload is not valid JSON.
+    Extract the first valid JSON object from the payload string.
+    Useful when the LLM output includes trailing junk or multiple objects.
     """
+    import json
     try:
-        data = json.loads(payload)
+        start = payload.find('{')
+        end   = payload.rfind('}') + 1
+        if start == -1 or end == -1:
+            raise ValueError("No JSON object found.")
+        payload_clean = payload[start:end]
+        data = json.loads(payload_clean)
         if not isinstance(data, dict):
             raise ValueError("Payload must decode to a JSON object.")
         return data
-    except json.JSONDecodeError as err:
+    except Exception as err:
         raise ValueError(f"Invalid JSON payload: {err}") from err
 
 
