@@ -12,7 +12,7 @@
   "Jaggery(g)": 200,
   "Tomatoes(count)": 10,
   "Onions(count)": 10,
-  "Potatoes(count)": 5,
+  "Potato(count)": 5,
   "Green chilies(count)": 10,
   "Curry leaves(bunch)": 1,
   "Coriander leaves(bunch)": 1,
@@ -35,5 +35,17 @@
   "Fish(g)": 500,
   "Curd(g)": 500,
   "Milk(g)": 1000,
-  "coffee(g)": 250
+  "coffee(g)": 250,
+  "fish sauce(ml)": 100,
+  "soy sauce(ml)": 100,
+  "thai basil(bunch)": 1,
+  "coconut milk(ml)": 400,
+  "chillies(count)": 5,
+  "spring onions(count)": 5,
+  "garlic(count)": 10,
+  "ginger(g)": 100,
+  "noodles(g)": 500,
+  "peanuts(g)": 200,
+  "lemon grass(count)": 2,
+  "lime(count)": 2
 }

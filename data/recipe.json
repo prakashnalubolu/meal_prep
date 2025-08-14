@@ -778,7 +778,7 @@
     "ingredients": [
       {"item": "ground chicken", "quantity": 250, "unit": "g"},
       {"item": "thai basil", "quantity": 10, "unit": "g"},
-      {"item": "chilies", "quantity": 2, "unit": "count"},
+      {"item": "chillies", "quantity": 2, "unit": "count"},
       {"item": "soy sauce", "quantity": 30, "unit": "ml"}
     ],
     "steps": [

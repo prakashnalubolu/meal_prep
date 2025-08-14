@@ -32,18 +32,50 @@ def _match(a: str, b: str) -> bool:
 def _find(name: str) -> Optional[Dict]:
     return next((r for r in _load() if _match(name, r["name"])), None)
 
-def _can_make(recipe: Dict, pantry_items: set[str]) -> bool:
-    """True if *all* ingredient names are present in pantry_items."""
-    recipe_items = {ing["item"].lower() for ing in recipe["ingredients"]}
-    return recipe_items.issubset(pantry_items)
 
 def _normalize(name: str) -> str:
     """Return the head noun for loose matching."""
     return name.lower().split()[-1]       # last word
 
+def _normalise_diet(label: str | None) -> str:
+    """Map user/recipe diet labels to canonical codes: veg, eggtarian, non-veg."""
+    if not label:
+        return ""
+    s = str(label).strip().lower()
+    s = s.replace("_", "-").replace(" ", "-")
+    aliases = {
+        # vegetarian
+        "veg": "veg",
+        "vegetarian": "veg",
+        "veggie": "veg",
+        # eggtarian / ovo-vegetarian
+        "eggtarian": "eggtarian",
+        "eggetarian": "eggtarian",
+        "ovo-vegetarian": "eggtarian",
+        "ovo": "eggtarian",
+        "egg": "eggtarian",
+        # non-vegetarian
+        "non-veg": "non-veg",
+        "nonveg": "non-veg",
+        "non-vegetarian": "non-veg",
+        "nonvegetarian": "non-veg",
+        "meat": "non-veg",
+    }
+    return aliases.get(s, s)
+
 def diet_ok(recipe_diet, wanted):
-    table = {"veg":0, "eggtarian":1, "non-veg":2}
-    return table[recipe_diet] <= table[wanted]
+    """Allow veg ⊂ eggtarian ⊂ non-veg (i.e., higher code is more permissive)."""
+    r = _normalise_diet(recipe_diet)
+    w = _normalise_diet(wanted)
+    order = {"veg": 0, "eggtarian": 1, "non-veg": 2}
+    if not w:
+        # No user filter -> all ok
+        return True
+    if r not in order or w not in order:
+        # Unknown labels: fall back to exact-match to be safe
+        return r == w
+    return order[r] <= order[w]
+
 
 # ── pretty ingredient formatter ────────────────────────────────────────────
 _plural_re = re.compile(r"([^aeiou]y|[sxz]|ch|sh)$", re.I)
@@ -109,28 +141,22 @@ def delete_recipe(name: str) -> str:
     _save(new_db)
     return f"🗑️ Deleted recipe '{name}'."
 
-from heapq import nlargest
-
 @tool
 def find_recipes_by_items(
-    items: List[str],
+    items: Optional[List[str]] = None,
     cuisine: Optional[str] = None,
     max_time: Optional[int] = None,
-    diet: str | None = None,
+    diet: Optional[str] = None,
     k: int = 5,
 ) -> str:
     """
     Suggest up to *k* recipes that best match the given *items* list.
 
-    • Scoring = (# ingredients present) / (total ingredients)  
-    • Always returns the top-k recipes with non-zero score, sorted desc.
-
-    Optional filters:
-        • cuisine: e.g. "thai", "italian"
-        • max_time: prep+cook time in minutes
-        • diet: "veg", "eggtarian", "non-veg"
+    • Scoring = (# ingredients present) / (total ingredients)
+    • Returns top-k with non-zero score, sorted desc.
+    • If *items* is empty/None, fall back to filtered top-k by time.
     """
-    pantry = {i.lower().strip() for i in items}
+    items = [s.strip().lower() for s in (items or []) if s and s.strip()]
 
     recipes = _load()
     if diet:
@@ -143,28 +169,37 @@ def find_recipes_by_items(
             if r["prep_time_min"] + r["cook_time_min"] <= max_time
         ]
 
+    # Fallback: no items provided → return filtered list by time
+    if not items:
+        recipes_sorted = sorted(
+            recipes,
+            key=lambda r: (r["prep_time_min"] + r["cook_time_min"], r["name"])
+        )[:k]
+        return "\n".join(f"- {r['name'].title()} ({r['cuisine']})" for r in recipes_sorted) or "📭 No recipes match those filters."
+
+    # Score by overlap with provided items
+    pantry_norm = {_normalize(i) for i in items}
     scored: list[tuple[float, Dict]] = []
     for r in recipes:
         recipe_items = {_normalize(i["item"]) for i in r["ingredients"]}
-        pantry_norm  = {_normalize(i) for i in items}
         score = len(recipe_items & pantry_norm) / len(recipe_items)
-        if score > 0:                              # keep only partial matches
+        if score > 0:
             scored.append((score, r))
 
     if not scored:
         return "📭 No recipes match those items."
 
-    # pick top-k by score, then faster total time, then name
+    from heapq import nlargest
     best = nlargest(
         k, scored,
-        key=lambda t: (t[0],                     # score desc
-                       -(t[1]["prep_time_min"] + t[1]["cook_time_min"]),  # shorter time
-                       t[1]["name"]),
+        key=lambda t: (
+            t[0],  # higher score first
+            -(t[1]["prep_time_min"] + t[1]["cook_time_min"]),  # shorter total time
+            t[1]["name"],
+        ),
     )
 
-    lines = [
-        f"- {r['name'].title()} ({r['cuisine']}) "
-        f"— {round(score*100):>3}% ingredients covered"
+    return "\n".join(
+        f"- {r['name'].title()} ({r['cuisine']}) — {round(score*100):>3}% ingredients covered"
         for score, r in best
-    ]
-    return "\n".join(lines)
+    )

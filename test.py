@@ -1,6 +1,7 @@
-from agents.cuisine_agent import chat
+from langchain_core.prompts import PromptTemplate
+from agents.meal_planner_agent import TEMPLATE  # or paste the string here
 
-print(chat(
-  "I have chicken, coconut milk and thai basil. "
-  "Which Thai dishes can I cook? Show top 3."
-))
+PromptTemplate(
+    input_variables=["input","agent_scratchpad","tools","tool_names"],
+    template=TEMPLATE,
+).format(input="hi", agent_scratchpad="", tools="[...]", tool_names="a,b")
