@@ -1,7 +1,7 @@
-from langchain_core.prompts import PromptTemplate
-from agents.meal_planner_agent import TEMPLATE  # or paste the string here
+from tools.meal_plan_tools import set_constraints, auto_plan, memory
 
-PromptTemplate(
-    input_variables=["input","agent_scratchpad","tools","tool_names"],
-    template=TEMPLATE,
-).format(input="hi", agent_scratchpad="", tools="[...]", tool_names="a,b")
+print(set_constraints.invoke({"payload": {"mode": "pantry-first-strict"}}))
+print(auto_plan.invoke({"payload": {"days": 3, "meals": ["Lunch","Dinner"]}}))
+
+print("\nPlan snapshot:", memory.memories.get("plan"))
+print("\nCalc log (last 3):", memory.memories.get("calc_log", [])[-3:])

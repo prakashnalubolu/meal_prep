@@ -1,0 +1,53 @@
+{
+  "rules": [
+    { "item": "spinach",      "from": "count", "to": "g",  "factor": 125,    "round": 10 },
+    { "item": "spinach",      "from": "g",     "to": "count", "factor": 0.008, "round": 1  },
+
+    { "item": "chili",        "from": "count", "to": "g",  "factor": 5,      "round": 1  },
+    { "item": "chili",        "from": "g",     "to": "count", "factor": 0.2,   "round": 1  },
+    { "item": "dried chili",  "from": "count", "to": "g",  "factor": 5,      "round": 1  },
+    { "item": "dried chili",  "from": "g",     "to": "count", "factor": 0.2,   "round": 1  },
+
+    { "item": "garlic",       "from": "count", "to": "g",  "factor": 5,      "round": 1  },
+    { "item": "garlic",       "from": "g",     "to": "count", "factor": 0.2,   "round": 1  },
+
+    { "item": "onion",        "from": "count", "to": "g",  "factor": 100,    "round": 10 },
+    { "item": "onion",        "from": "g",     "to": "count", "factor": 0.01,  "round": 1  },
+
+    { "item": "tomato",       "from": "count", "to": "g",  "factor": 100,    "round": 10 },
+    { "item": "tomato",       "from": "g",     "to": "count", "factor": 0.01,  "round": 1  },
+
+    { "item": "bell pepper",  "from": "count", "to": "g",  "factor": 150,    "round": 10 },
+    { "item": "bell pepper",  "from": "g",     "to": "count", "factor": 0.0067, "round": 1  },
+
+    { "item": "eggplant",     "from": "count", "to": "g",  "factor": 300,    "round": 10 },
+    { "item": "eggplant",     "from": "g",     "to": "count", "factor": 0.0033, "round": 1  },
+
+    { "item": "spring onion", "from": "count", "to": "g",  "factor": 15,     "round": 5  },
+    { "item": "spring onion", "from": "g",     "to": "count", "factor": 0.0667,"round": 1  },
+
+    { "item": "potato",       "from": "count", "to": "g",  "factor": 150,    "round": 10 },
+    { "item": "potato",       "from": "g",     "to": "count", "factor": 0.0067, "round": 1  },
+
+    { "item": "thai basil",   "from": "count", "to": "g",  "factor": 5,      "round": 1  },
+    { "item": "thai basil",   "from": "g",     "to": "count", "factor": 0.2,   "round": 1  },
+
+    { "item": "milk",         "from": "ml",    "to": "g",  "factor": 1,      "round": 10 },
+    { "item": "milk",         "from": "g",     "to": "ml", "factor": 1,      "round": 10 },
+
+    { "item": "coconut milk", "from": "ml",    "to": "g",  "factor": 1,      "round": 10 },
+    { "item": "coconut milk", "from": "g",     "to": "ml", "factor": 1,      "round": 10 }
+  ],
+  "labels": {
+    "spinach":      { "count_label": "bunch" },
+    "garlic":       { "count_label": "clove" },
+    "chili":        { "count_label": "count" },
+    "dried chili":  { "count_label": "count" },
+    "onion":        { "count_label": "onion" },
+    "tomato":       { "count_label": "count" },
+    "bell pepper":  { "count_label": "pepper" },
+    "eggplant":     { "count_label": "eggplant" },
+    "spring onion": { "count_label": "stalk" },
+    "potato":       { "count_label": "potato" }
+  }
+}

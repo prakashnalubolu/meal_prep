@@ -1,207 +1,325 @@
-"""Wrapper tools so ManagerAgent can call PantryAgent & CuisineAgent and keep a short-term slot memory (current dish, last inventory)."""
-import re
+"""
+Lightweight manager utilities kept for shared memory and the string-only
+missing_ingredients tool. No agent-to-agent wrappers are used anymore.
+"""
+
+from __future__ import annotations
+import json, os, re
+from typing import Dict, Any, List, Tuple, Optional
+
 from langchain_core.tools import tool
 from langchain.memory import SimpleMemory
-from difflib import get_close_matches 
-from tools.cuisine_tools import _load 
-from difflib import SequenceMatcher
 
-# ----------------------------------------------------------
-memory = SimpleMemory(memories={})      
-# ----------------------------------------------------------
+# Expose a small memory object so the UI can still show "Manager slots".
+memory: SimpleMemory = SimpleMemory(memories={})
 
-def _push_recent(dish: str, limit: int = 10):
-    lst = memory.memories.setdefault("recent_dishes", [])
-    if dish not in lst:          
-        lst.append(dish)
-        if len(lst) > limit:
-            del lst[0]
-    memory.memories["current_dish"] = dish
+# --------------------------------------------------------------------- Paths
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+PANTRY_JSON_PATH = os.path.join(ROOT_DIR, "data", "pantry.json")
 
+# ----------------------------------------------------------------- Helpers
 
-def _capture_possible_dish(text: str):
-    """Find one recipe name in free-text (user or agent) and store it."""
-    clean = re.sub(r"[-*•]\s*", "", text.lower()).strip()
-    m = re.search(r"(?:cook|make|prepare|try)\s+(.+?)(?:[,?.!]|$)", clean)
-    guess = m.group(1).strip() if m else clean
+_name_unit_re = re.compile(r"^\s*(.*?)\s*\(([^)]+)\)\s*$")
 
-    names = [r["name"].lower() for r in _load()]
-    match = get_close_matches(guess, names, n=1, cutoff=0.95)
-    if match:
-        dish = match[0]
-        memory.memories["current_dish"] = dish
-        _push_recent(dish)
+def _split_pantry_key(key: str) -> Tuple[str, str]:
+    """'tomato (count)' -> ('tomato', 'count')  |  'rice (g)' -> ('rice','g')"""
+    m = _name_unit_re.match(key)
+    if not m:
+        base = key.split("(")[0]
+        return base.strip().lower(), "count"
+    return m.group(1).strip().lower(), m.group(2).strip().lower()
 
-def _capture_dish_list(text: str):
-    names = {r["name"].lower() for r in _load()}
-    for chunk in re.split(r"[,\n]", text):
-        cand = re.sub(r"^[\d\-\*•.]+\s*", "", chunk.lower()).split("(")[0].strip()
-        if cand in names:
-            _push_recent(cand)
-
-
-
-def _parse_inventory(text: str) -> list[str]:
-    """
-    Extract item names from either
-      • multi-line bullet list
-      • one-line comma list returned by PantryAgent
-    Returns lower-case names, e.g. ["apple", "orange", "banana"].
-    """
-    # if the response contains ':' treat everything **after** the first colon
-    # as the comma-separated list
-    if ":" in text:
-        text = text.split(":", 1)[1]
-
-    names = []
-    # replace newlines with commas so we have a uniform delimiter
-    for chunk in text.replace("\n", ",").split(","):
-        m = re.match(r"\s*([a-zA-Z][a-zA-Z\s]*)\s*\(", chunk)
-        if m:
-            names.append(m.group(1).strip().lower())
-    return names
-
-
-# ── Lazy chat imports to avoid circular refs --------------------------------
-def _pantry_chat(msg: str) -> str:
-    from agents.pantry_agent import chat as pantry_chat
-    return pantry_chat(msg)
-
-def _cuisine_chat(msg: str) -> str:
-    from agents.cuisine_agent import chat as cuisine_chat
-    return cuisine_chat(msg)
-
-# ── Tools -------------------------------------------------------------------
-
-import time
-
-@tool
-def call_pantry(message: str) -> str:
-    """Forward *message* to PantryAgent and refresh inventory cache."""
-    _capture_possible_dish(message)       
-    reply = _pantry_chat(message)
-
-    if message.lower().startswith("list"):
-        items = _parse_inventory(reply)
-        memory.memories.update({
-            "last_inventory_items": items,
-            "inv_timestamp": time.time(),
-        })
-    elif message.lower().startswith(("add", "remove", "update")):
-        inv_txt = _pantry_chat("list pantry")
-        items   = _parse_inventory(inv_txt)
-        memory.memories.update({
-            "last_inventory_items": items,
-            "inv_timestamp": time.time(),
-        })
-    return reply
-
-
-_SIM_THRESHOLD = 0.85 
-@tool
-def call_cuisine(message: str) -> str:
-    """Forward *message* to CuisineAgent and refresh inventory cache."""
-    _capture_possible_dish(message)
-    reply = _cuisine_chat(message)
-
-    # --- similarity guard --------------------------------------------------
-    m = re.search(r"\*\*(.+?)\*\*", reply)
-    if m:
-        recipe_name = m.group(1).strip().lower()
-        # strip helper words from the original user message
-        requested = re.sub(r"(?:recipe|how to (?:cook|make))", "",
-                           message, flags=re.I).strip().lower()
-        if SequenceMatcher(None, recipe_name, requested).ratio() < _SIM_THRESHOLD:
-            # treat as 'not found' -> ask CuisineAgent for suggestions
-            alt = _cuisine_chat(f'suggest_similar "{requested}" top_k=5')
-            return ("Apologies — I don’t have an exact recipe for that dish.\n\n"
-                    f"Here are some close alternatives you could try:\n{alt}")
-
-        _push_recent(recipe_name)  # we accept it as a good match
-
-    _capture_dish_list(reply)
-    return reply
-
-_word_re = re.compile(r"[a-zA-Z]+")
-BULLET = re.compile(r"^\s*([-*•]|•|\d+\.)\s*")
-def _singular(word: str) -> str:
-    return word[:-1] if word.endswith("s") else word
- 
-def _extract_ing_names(recipe_txt: str) -> set[str]:
-    """Return the set of (raw) ingredient names found in recipe bullets."""
-    names: set[str] = set()
-    for line in recipe_txt.splitlines():
-        if not BULLET.match(line):
-            continue                    # not a list item
-        words = [w.lower() for w in _word_re.findall(line)]
-        if not words:
-            continue
-        last = _singular(words[-1])
-        names.add(last)
-        if len(words) >= 2:
-            names.add(_singular(" ".join(words[-2:])))
-    return names
-
-DESCRIPTORS = {"cooked", "fresh", "dried", "ground", "chopped", "sliced", "large","medium", 
-               "small", "whole", "raw", "ripe", "frozen", "canned", "baked", "steamed", "boiled", "grilled", "roasted",
-               "g","kg","ml","l"}
+def _normalize_unit(u: Optional[str]) -> str:
+    if not u:
+        return "count"
+    u = u.strip().lower()
+    if u in ("kg", "kilogram", "kilograms"):
+        return "g"
+    if u in ("g", "gram", "grams", "gms"):
+        return "g"
+    if u in ("l", "litre", "liter", "liters", "litres"):
+        return "ml"
+    if u in ("ml", "millilitre", "milliliter", "milliliters", "millilitres"):
+        return "ml"
+    if u in ("count", "pcs", "piece", "pieces"):
+        return "count"
+    return u  # leave as-is for any custom units
 
 def _normalise(name: str) -> str:
-    """strip leading descriptors, lower-case, singularise."""
-    words = [w.lower() for w in name.split() if w.lower() not in DESCRIPTORS]
-    base  = " ".join(words) if words else name.lower()
-    # simple plural → singular
-    if base.endswith("ies"):              # berries -> berry
-        base = base[:-3] + "y"
-    elif base.endswith(("es", "s")) and len(base) > 3:
-        base = base[:-1]                  # onions -> onion, eggs -> egg
-    return base
+    """Lower-case and strip very simple plurals (onions → onion)."""
+    n = name.strip().lower()
+    if n.endswith("ies"):
+        n = n[:-3] + "y"
+    elif n.endswith("s") and len(n) > 3:
+        n = n[:-1]
+    return n
+
+# Generic descriptors we drop for base-name matching (kept intentionally short)
+_DESCRIPTORS = {
+    "white", "boneless", "skinless", "lean", "fresh", "frozen", "dried",
+    "ground", "powdered", "powder", "whole", "sliced", "chopped", "fillet", "fillets",
+    "medium", "large", "small","red", "green", "yellow", "black", "brown",
+}
+
+# A *tiny* alias map (not a big dictionary) to collapse very common variants
+_ALIASES = {
+    "chilli": "chili", "chilies": "chili", "chillies": "chili",
+    "scallion": "spring onion", "scallions": "spring onion",
+    "coriander leaves": "coriander leave", "cilantro": "coriander leave",
+    "curry leave": "curry leaf",
+    "curry leaves": "curry leaf",
+}
+
+_plural_re = re.compile(r"(?i)(ies|s)$")
+
+def _depluralize(w: str) -> str:
+    if w.endswith("ies"):
+        return w[:-3] + "y"
+    if w.endswith("s") and len(w) > 3:
+        return w[:-1]
+    return w
+
+# ---------------------- Recipe access (structured, no agent hop)
+from tools.cuisine_tools import _load as _load_recipes
+
+def _load_recipe_by_name(name: str) -> Optional[Dict[str, Any]]:
+    name = _clean_name(name)
+    name_l = name.strip().lower()
+    for r in _load_recipes():
+        if r["name"].strip().lower() == name_l:
+            return r
+    return None
+
+# ----------------------------------------------------------------- Tool: gaps
+def _clean_name(s: str) -> str:
+    s = str(s or "").strip()
+    # strip balanced outer quotes
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        s = s[1:-1]
+    # strip any stray quotes/whitespace and collapse spaces
+    s = s.strip('\'"\n\r\t ')
+    s = re.sub(r"\s+", " ", s)
+    return s
 
 
+def _canonical_item_name(name: str) -> str:
+    """Lowercase, drop generic descriptors, collapse trivial aliases, depluralize."""
+    s = _clean_name(name).lower()
+    # collapse multiword aliases first
+    for k, v in sorted(_ALIASES.items(), key=lambda kv: -len(kv[0])):
+        s = re.sub(rf"\b{k}\b", v, s)
+    # drop descriptors
+    tokens = [t for t in re.split(r"\W+", s) if t]
+    tokens = [t for t in tokens if t not in _DESCRIPTORS]
+    # depluralize each token (lightweight)
+    tokens = [_depluralize(t) for t in tokens]
+    # heuristics: keep up to two words for things like "spring onion"
+    if not tokens:
+        return ""
+    if len(tokens) >= 2 and "spring" in tokens and "onion" in tokens:
+        return "spring onion"
+    if len(tokens) >= 2 and tokens[-2] == "fish" and tokens[-1] == "fillet":
+        return "fish"
+    # fallback: last token as head noun
+    return " ".join(tokens[-2:]) if len(tokens) > 1 else tokens[-1]
+
+def canonical_item_name(name: str) -> str:
+    return _canonical_item_name(name)
+
+# ------------------------------- Pantry IO ----------------------------------
+def _load_pantry() -> Dict[str, int]:
+    try:
+        with open(PANTRY_JSON_PATH, "r", encoding="utf-8") as fp:
+            data = json.load(fp)
+            return {k: int(v) for (k, v) in data.items()}
+    except FileNotFoundError:
+        return {}
+    except Exception:
+        return {}
+
+def _find_matching_key(pantry: Dict[str, int], item: str, unit: str) -> Optional[str]:
+    """Exact base-name + unit match after canonicalization."""
+    base = _canonical_item_name(item)
+    unit = _normalize_unit(unit)
+    for k in pantry.keys():
+        b, u = _split_pantry_key(k)
+        if _canonical_item_name(b) == base and u == unit:
+            return k
+    return None
+
+# ----------------------------- Tools ----------------------------------------
 @tool
 def missing_ingredients(dish: str) -> str:
     """
     Tell the user which ingredients for *dish* are not in their pantry.
+    STRING-ONLY input. Returns a short natural-language sentence.
+
+    Matching rules:
+    • Name matching uses canonical base names (descriptor-stripped) + exact unit family (g/ml/count).
+    • Units are normalized (kg→g, l→ml, default count).
+    • This is a strict check (no creative swaps). Use `suggest_substitutions` to propose alternatives.
     """
+    dish = _clean_name(dish)
+    if not isinstance(dish, str) or not dish:
+        return "Please provide a dish name."
 
-    # --- ensure we have an up-to-date pantry snapshot ----------------------
-    inv_items = memory.memories.get("last_inventory_items")
-    if inv_items is None:
-        _ = call_pantry("list pantry")
-        inv_items = memory.memories.get("last_inventory_items", [])
+    recipe = _load_recipe_by_name(dish)
+    if not recipe:
+        return f"⚠️ Recipe '{dish}' not found."
 
-    pantry = {_normalise(it) for it in inv_items}
+    pantry = _load_pantry()
 
-    # --- fetch recipe ------------------------------------------------------
-    recipe_txt = call_cuisine(f"get_recipe {dish}")
-    if "Ingredients" not in recipe_txt:          # fallback: bullets only
-        recipe_txt = call_cuisine(
-            f'give ingredients list only for "{dish}"'
-        )
+    deficits: List[str] = []
+    for ing in recipe.get("ingredients", []):
+        raw_item = str(ing.get("item", "")).strip()
+        if not raw_item:
+            continue
+        need_qty = int(ing.get("quantity", 0) or 0)
+        unit = _normalize_unit(ing.get("unit") or "count")
+        if need_qty <= 0:
+            continue
 
-    if recipe_txt.strip().startswith("⚠️"):
-        return recipe_txt                        # CuisineAgent already apologised
+        key = _find_matching_key(pantry, raw_item, unit)
+        if key is None:
+            # Entire amount missing
+            deficits.append(f"{need_qty} {unit} {raw_item}")
+            continue
 
-    need = _extract_ing_names(recipe_txt)
-    if not need:                                # still couldn’t read list
-        return (f"Sorry, I couldn’t read the ingredient list for "
-                f"{dish.title()}. Could you try another recipe?")
+        have = int(pantry.get(key, 0))
+        if have < need_qty:
+            deficits.append(f"{need_qty - have} {unit} {raw_item}")
 
-    # --- compare -----------------------------------------------------------
-    collapsed = {}
-    for item in need:
-        base = _normalise(item)
-        collapsed[base] = min(collapsed.get(base, item), item, key=len)
+    dish_title = dish.strip().title()
+    if not deficits:
+        return f"You already have every ingredient for {dish_title}!"
+    if len(deficits) == 1:
+        return f"You'll still need {deficits[0]} to cook {dish_title}."
+    *rest, last = deficits
+    return f"You'll still need {', '.join(rest)} and {last} to cook {dish_title}."
 
-    missing = sorted(
-        {base: pretty for pretty in need
-         if (base := _normalise(pretty)) not in pantry}.values()
-    )
+# ---------- Substitution suggester (schema-bound, deterministic heuristics) --
+def _coerce_payload(payload: dict | str) -> dict:
+    if isinstance(payload, dict):
+        return payload
+    s = str(payload or "").strip()
+    try:
+        return json.loads(s)
+    except Exception:
+        # salvage the first {...}
+        a, b = s.find("{"), s.rfind("}") + 1
+        if a >= 0 and b > a:
+            return json.loads(s[a:b])
+        raise ValueError("Invalid JSON payload for suggest_substitutions")
 
-    # --- user-friendly response -------------------------------------------
-    if not missing:
-        return f"You already have every ingredient for {dish.title()}!"
-    if len(missing) == 1:
-        return (f"You'll still need {missing[0]} " f" to cook {dish.title()}.")
-    *rest, last = missing
-    return (f"You'll still need {', '.join(rest)} and {last}" f" to cook {dish.title()}.")
+def _aggregate_pantry_by_base(pantry: Dict[str, int]) -> Dict[str, Dict[str, int]]:
+    """
+    Returns { base_item: {unit: qty, ...}, ... } using canonical base names.
+    """
+    out: Dict[str, Dict[str, int]] = {}
+    for k, v in pantry.items():
+        b, u = _split_pantry_key(k)
+        base = _canonical_item_name(b)
+        out.setdefault(base, {})
+        out[base][u] = int(v)
+    return out
+
+def _prep_note_for(missing_raw: str, base: str) -> str:
+    s = _clean_name(missing_raw).lower()
+    if "fillet" in s and "fish" in base:
+        return "cut into boneless fillets; remove skin if present"
+    if "dried" in s and "chili" in base:
+        return "dry-roast chilies 2–3 min to mimic dried heat"
+    return ""
+
+def _confidence_for(missing_raw: str, base: str) -> float:
+    s = _clean_name(missing_raw).lower()
+    if "fillet" in s and "fish" in base:
+        return 0.84
+    if "dried" in s and "chili" in base:
+        return 0.75
+    return 0.70  # default for close base-name matches
+
+@tool
+def suggest_substitutions(payload: dict | str) -> str:
+    """
+    Propose substitutions for remaining deficits using the user's pantry.
+
+    Input (dict or JSON string):
+    {
+      "dish": "Kung Pao Chicken",
+      "deficits": [{"item":"dried chili","need_qty":5,"unit":"count"}],
+      "pantry": [{"item":"red chili","qty":12,"unit":"count"}, ...],
+      "constraints": {"allow_prep": true, "max_subs_per_item": 2}
+    }
+
+    Output (JSON string):
+    {"subs":[
+      {"missing":"dried chili",
+       "use":[{"item":"red chili","qty":5,"unit":"count"}],
+       "prep":"dry-roast 2–3 min",
+       "confidence":0.78,
+       "reason":"Close variant; roasting approximates dried"}
+    ]}
+    """
+    data = _coerce_payload(payload)
+    deficits = data.get("deficits") or []
+    pantry_list = data.get("pantry") or []
+    allow_prep = bool((data.get("constraints") or {}).get("allow_prep", True))
+
+    # Build a base-name index for the pantry
+    # Prefer the snapshot passed in; fall back to file.
+    if pantry_list:
+        pantry: Dict[str, int] = {}
+        for p in pantry_list:
+            k = f"{_canonical_item_name(p.get('item',''))} ({_normalize_unit(p.get('unit'))})"
+            pantry[k] = pantry.get(k, 0) + int(p.get("qty", 0))
+    else:
+        pantry = _load_pantry()
+
+    pantry_by_base = _aggregate_pantry_by_base(pantry)
+
+    results: List[Dict[str, Any]] = []
+
+    for d in deficits:
+        raw_item = str(d.get("item",""))
+        unit = _normalize_unit(d.get("unit") or "count")
+        need_qty = int(d.get("need_qty", 0) or 0)
+        if not raw_item or need_qty <= 0:
+            continue
+
+        base = _canonical_item_name(raw_item)
+
+        # 1) If pantry already has the base in the same unit family, suggest direct use
+        unit_map = pantry_by_base.get(base, {})
+        if unit in unit_map and unit_map[unit] >= need_qty:
+            results.append({
+                "missing": raw_item,
+                "use": [{"item": base, "qty": need_qty, "unit": unit}],
+                "prep": "",
+                "confidence": 0.9,
+                "reason": "Same ingredient available under a variant name."
+            })
+            continue
+
+        # 2) Heuristic generic swaps (no giant dictionary)
+        #    fish fillet -> fish; dried chili -> chili
+        #    Only if we actually have the base in pantry.
+        if base in pantry_by_base and allow_prep:
+            prep = _prep_note_for(raw_item, base)
+            conf = _confidence_for(raw_item, base)
+            # choose the same unit if present; otherwise pick any available unit (agent can rely on alt-units)
+            pick_unit = unit if unit in pantry_by_base[base] else (next(iter(pantry_by_base[base].keys())) if pantry_by_base[base] else unit)
+            results.append({
+                "missing": raw_item,
+                "use": [{"item": base, "qty": need_qty, "unit": pick_unit}],
+                "prep": prep,
+                "confidence": conf,
+                "reason": "Close culinary equivalent; simple prep bridges the gap."
+            })
+            continue
+
+        # 3) Nothing reasonable
+        #    (We intentionally do NOT fabricate substitutes.)
+        #    Skip adding an entry.
+
+    return json.dumps({"subs": results}, ensure_ascii=False)

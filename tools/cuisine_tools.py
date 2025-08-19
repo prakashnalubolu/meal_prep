@@ -1,7 +1,7 @@
 """
 tools/cuisine_tools.py  –  CRUD + query helpers for recipes.json
 """
-import json, os, re
+import json, os, re, difflib
 from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -15,23 +15,9 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # ── low-level storage helpers ──────────────────────────────────────────────
 def _load() -> List[Dict]:
     if os.path.exists(DATA_PATH):
-        try:
-            with open(DATA_PATH, encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            pass
+        with open(DATA_PATH, encoding="utf-8") as f:
+            return json.load(f)  # let JSON errors raise
     return []
-
-def _save(recipes: List[Dict]):
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump(recipes, f, indent=2)
-
-def _match(a: str, b: str) -> bool:
-    return a.strip().lower() == b.strip().lower()
-
-def _find(name: str) -> Optional[Dict]:
-    return next((r for r in _load() if _match(name, r["name"])), None)
-
 
 def _normalize(name: str) -> str:
     """Return the head noun for loose matching."""
@@ -76,8 +62,6 @@ def diet_ok(recipe_diet, wanted):
         return r == w
     return order[r] <= order[w]
 
-
-# ── pretty ingredient formatter ────────────────────────────────────────────
 _plural_re = re.compile(r"([^aeiou]y|[sxz]|ch|sh)$", re.I)
 def _plural(word: str) -> str:
     if _plural_re.search(word): return word + "es"
@@ -89,10 +73,79 @@ def _fmt_ing(item: str, qty: int | float, unit: str) -> str:
         return f"- {qty} {name}"
     return f"- {qty} {unit} {item}"
 
+def _clean_name(s: str) -> str:
+    s = str(s or "").strip()
+    # strip outer matching quotes
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        s = s[1:-1]
+    # strip any stray leading/trailing quotes and collapse spaces
+    s = s.strip('\'"')
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+def _match(a: str, b: str) -> bool:
+    return _clean_name(a).lower() == _clean_name(b).lower()
+
+def _find(name: str) -> Optional[Dict]:
+    """Exact match first; if not found, fuzzy fallback for common typos."""
+    want = _clean_name(name)
+    db = _load()
+    for r in db:
+        if _match(r["name"], want):
+            return r
+    # fuzzy fallback (handles e.g. "palak pannerr", "kungpao chicken")
+    names = [r["name"] for r in db]
+    hit = difflib.get_close_matches(want, names, n=1, cutoff=0.85)
+    if hit:
+        return next((r for r in db if _match(r["name"], hit[0])), None)
+    return None
+
+def _coerce_payload(payload):
+    if isinstance(payload, dict):
+        return payload
+    s = str(payload or "").strip()
+    import json
+    try:
+        return json.loads(s)
+    except Exception:
+        # salvage the first {...}
+        start, end = s.find("{"), s.rfind("}") + 1
+        if start >= 0 and end > start:
+            cand = s[start:end]
+            if '"' not in cand and "'" in cand:
+                cand = cand.replace("'", '"')
+            return json.loads(cand)
+        raise ValueError(f"Invalid JSON payload: {s[:120]}...")
+
+# ── name canonicalization for coverage checks ─────────────────────────────
+def _canon(name: str) -> str:
+    """
+    Canonicalize an ingredient/pantry token to a base form:
+    - import canonical_item_name lazily to avoid circular imports,
+    - lowercase,
+    - very simple singularization (tomatoes -> tomato).
+    """
+    # Lazy import to break the cycle with manager_tools
+    try:
+        from tools.manager_tools import canonical_item_name as _canon_name
+    except Exception:
+        # Safe fallback if manager_tools isn't available yet
+        def _canon_name(x: str) -> str:
+            return (x or "").strip().lower()
+
+    base = _canon_name(name) if name else ""
+    s = (base or "").strip().lower()
+    if s.endswith("ies"):
+        s = s[:-3] + "y"
+    elif s.endswith("s") and len(s) > 3:
+        s = s[:-1]
+    return s
+
 # ── LangChain tools ────────────────────────────────────────────────────────
 @tool
 def get_recipe(name: str) -> str:
     """Return one full recipe (ingredients & steps) or an error."""
+    name = _clean_name(name)
     r = _find(name)
     if not r:
         return f"⚠️ Recipe '{name}' not found."
@@ -122,84 +175,117 @@ def list_recipes(cuisine: Optional[str] = None,
     return "\n".join(f"- {r['name'].title()} ({r['cuisine']})" for r in items)
 
 @tool
-def add_recipe(recipe_json: Dict) -> str:
-    """Add an entire recipe (dict). Fails if name already exists."""
-    db = _load()
-    if _find(recipe_json["name"]):
-        return f"⚠️ Recipe '{recipe_json['name']}' already exists."
-    db.append(recipe_json)
-    _save(db)
-    return f"✅ Added recipe '{recipe_json['name']}'."
-
-@tool
-def delete_recipe(name: str) -> str:
-    """Delete a recipe by exact name."""
-    db = _load()
-    new_db = [r for r in db if not _match(name, r["name"])]
-    if len(new_db) == len(db):
-        return f"⚠️ Recipe '{name}' not found."
-    _save(new_db)
-    return f"🗑️ Deleted recipe '{name}'."
-
-@tool
-def find_recipes_by_items(
-    items: Optional[List[str]] = None,
-    cuisine: Optional[str] = None,
-    max_time: Optional[int] = None,
-    diet: Optional[str] = None,
-    k: int = 5,
-) -> str:
+def find_recipes_by_items(payload: dict | str) -> str:
     """
     Suggest up to *k* recipes that best match the given *items* list.
 
-    • Scoring = (# ingredients present) / (total ingredients)
-    • Returns top-k with non-zero score, sorted desc.
-    • If *items* is empty/None, fall back to filtered top-k by time.
-    """
-    items = [s.strip().lower() for s in (items or []) if s and s.strip()]
+    Accepts either a dict or a JSON string:
+    {"items":["chicken"], "cuisine":"indian", "max_time": null, "diet": null, "k": 5}
 
+    Ranking policy (strict):
+    • First, show all recipes whose ingredient set is 100% covered by the pantry items (after canonicalization).
+    • If no recipe is 100% covered, show partial matches ranked by: more items covered, then shorter total time, then name.
+    """
+    data    = _coerce_payload(payload)
+    items   = data.get("items") or []
+    cuisine = data.get("cuisine")
+    max_time = data.get("max_time")
+    diet    = data.get("diet")
+    k       = int(data.get("k", 5) or 5)
+
+    if isinstance(items, str):
+        s = items.strip()
+        try:
+            data = json.loads(s) if (s.startswith("{") and s.endswith("}")) else {}
+        except Exception:
+            data = {}
+        if isinstance(data, dict):
+            items   = data.get("items", items if isinstance(items, list) else [])
+            cuisine = data.get("cuisine", cuisine)
+            max_time = data.get("max_time", max_time)
+            diet    = data.get("diet", diet)
+            k       = data.get("k", k)
+        else:
+            # fallback: split free-text into a list
+            items = [w.strip() for w in re.split(r"[,;\n]", s) if w.strip()]
+
+    items = [s.strip() for s in (items or []) if s and s.strip()]
+
+    # ---- load & filter candidates
     recipes = _load()
     if diet:
-        recipes = [r for r in recipes if diet_ok(r["diet"], diet)]
+        recipes = [r for r in recipes if diet_ok(r.get("diet"), diet)]
     if cuisine:
-        recipes = [r for r in recipes if r["cuisine"].lower() == cuisine.lower()]
+        recipes = [r for r in recipes if r.get("cuisine", "").lower() == cuisine.lower()]
     if max_time is not None:
         recipes = [
             r for r in recipes
-            if r["prep_time_min"] + r["cook_time_min"] <= max_time
+            if r.get("prep_time_min", 0) + r.get("cook_time_min", 0) <= max_time
         ]
 
-    # Fallback: no items provided → return filtered list by time
+    # ---- fallback: no pantry items provided -> shortest total time
     if not items:
         recipes_sorted = sorted(
             recipes,
-            key=lambda r: (r["prep_time_min"] + r["cook_time_min"], r["name"])
+            key=lambda r: (r.get("prep_time_min", 0) + r.get("cook_time_min", 0), r.get("name", "")),
         )[:k]
-        return "\n".join(f"- {r['name'].title()} ({r['cuisine']})" for r in recipes_sorted) or "📭 No recipes match those filters."
+        return (
+            "\n".join(f"- {r['name'].title()} ({r['cuisine']})" for r in recipes_sorted)
+            or "📭 No recipes match those filters."
+        )
 
-    # Score by overlap with provided items
-    pantry_norm = {_normalize(i) for i in items}
-    scored: list[tuple[float, Dict]] = []
+    # ---------- Rank by strict pantry coverage (100% first), then partial coverage ----------
+    have_set = {_canon(x) for x in items}
+    ranked = []  # (is_full_cover: bool, covered_count: int, total_time: int, recipe: dict, coverage_ratio: float)
+
     for r in recipes:
-        recipe_items = {_normalize(i["item"]) for i in r["ingredients"]}
-        score = len(recipe_items & pantry_norm) / len(recipe_items)
-        if score > 0:
-            scored.append((score, r))
+        need_set = {
+            _canon(i.get("item", ""))
+            for i in (r.get("ingredients") or [])
+            if (i.get("item") or "").strip()
+        }
+        need_set.discard("")
+        total_need = len(need_set)
+        if total_need == 0:
+            # avoid division by zero; treat as not matchable
+            continue
 
-    if not scored:
+        covered_cnt = len(need_set & have_set)
+        is_full = (covered_cnt == total_need)
+        total_time = int(r.get("prep_time_min", 0)) + int(r.get("cook_time_min", 0))
+        ratio = covered_cnt / total_need
+        ranked.append((is_full, covered_cnt, total_time, r, ratio))
+
+    if not ranked:
         return "📭 No recipes match those items."
 
-    from heapq import nlargest
-    best = nlargest(
-        k, scored,
-        key=lambda t: (
-            t[0],  # higher score first
-            -(t[1]["prep_time_min"] + t[1]["cook_time_min"]),  # shorter total time
-            t[1]["name"],
-        ),
-    )
+    # Sort: 100% coverage first, then more items covered, then quicker, then name
+    ranked.sort(key=lambda t: (not t[0], -t[1], t[2], (t[3].get("name") or "").lower()))
 
+    # Optionally bias by requested diet (only meaningful if user asked for non-veg priority)
+    def _diet_rank(recipe_diet: str, user_want: Optional[str]) -> int:
+        # lower is better
+        want = _normalise_diet(user_want)
+        r    = _normalise_diet(recipe_diet)
+        if want == "non-veg":
+            order = {"non-veg": 0, "eggtarian": 1, "veg": 2}
+            return order.get(r, 3)
+        return 0
+
+    # Split into full and partial buckets (preserving the sort order above)
+    full = [t for t in ranked if t[0]]
+    partial = [t for t in ranked if not t[0]]
+
+    if diet:
+        full.sort(key=lambda t: (_diet_rank(t[3].get("diet", ""), diet), t[2], (t[3].get("name") or "").lower()))
+        partial.sort(key=lambda t: (_diet_rank(t[3].get("diet", ""), diet), -t[1], t[2], (t[3].get("name") or "").lower()))
+
+    # Prefer ONLY fully covered recipes if any exist
+    bucket = full if full else partial
+    top = bucket[:k]
+
+    # ---- format
     return "\n".join(
-        f"- {r['name'].title()} ({r['cuisine']}) — {round(score*100):>3}% ingredients covered"
-        for score, r in best
+        f"- {t[3]['name'].title()} ({t[3]['cuisine']}) — {round(t[4] * 100):>3}% ingredients covered"
+        for t in top
     )
