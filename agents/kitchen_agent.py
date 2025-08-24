@@ -12,69 +12,77 @@ from langchain.memory import ConversationSummaryBufferMemory
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Tools (loaded defensively so we don’t crash if one module is missing)
+# Tools 
 # ────────────────────────────────────────────────────────────────────────────
-def _collect(module, names: List[str]):
-    out = []
-    for n in names:
-        try:
-            t = getattr(module, n)
-            out.append(t)
-        except Exception:
-            pass
-    return out
+# ────────────────────────────────────────────────────────────────────────────
+# Tools (fail fast; direct imports)
+# ────────────────────────────────────────────────────────────────────────────
 
+from tools.pantry_tools import (
+    list_pantry,
+    add_to_pantry,
+    remove_from_pantry,
+    update_pantry,
+)
 
-TOOLS = []
+from tools.cuisine_tools import (
+    find_recipes_by_items,
+    list_recipes,
+    get_recipe,
+)
 
-# Pantry tools (exact names from tools/pantry_tools.py)
-try:
-    from tools import pantry_tools as _pt
-    TOOLS += _collect(_pt, [
-        "list_pantry",
-        "add_to_pantry",
-        "remove_from_pantry",
-        "update_pantry",
-        # (no clear_pantry in your current file, so we don’t list it)
-    ])
-except Exception:
-    pass
+from tools.manager_tools import (
+    missing_ingredients,
+    suggest_substitutions,
+)
 
-# Cuisine tools (exact names from tools/cuisine_tools.py)
-try:
-    from tools import cuisine_tools as _ct
-    TOOLS += _collect(_ct, [
-        "find_recipes_by_items",
-        "list_recipes",
-        "get_recipe",
-    ])
-except Exception:
-    pass
+from tools.meal_plan_tools import (
+    memory as planner_memory,
+    call_manager,
+    update_plan,
+    get_shopping_list,
+    get_constraints,
+    set_constraints,
+    auto_plan,
+    save_plan,
+    cook_meal,
+)
 
-# Manager utilities kept for shared features (string-only gap check)
-try:
-    from tools import manager_tools as _mt
-    TOOLS += _collect(_mt, ["missing_ingredients","suggest_substitutions"])
-except Exception:
-    pass
+TOOLS = [
+    # Pantry
+    list_pantry,
+    add_to_pantry,
+    remove_from_pantry,
+    update_pantry,
 
-# Meal-plan tools (planning, shopping list, cook/deduct)
-try:
-    from tools import meal_plan_tools as _mp
-    TOOLS += _collect(_mp, [
-        "call_manager",
-        "update_plan",
-        "get_shopping_list",
-        "get_constraints",
-        "set_constraints",   
-        "auto_plan", 
-        "save_plan",
-        "cook_meal",
-    ])
-    # Expose planner memory if the UI wants to display it
-    planner_memory = _mp.memory
-except Exception:
-    planner_memory = None
+    # Cuisine
+    find_recipes_by_items,
+    list_recipes,
+    get_recipe,
+
+    # Manager
+    missing_ingredients,
+    suggest_substitutions,
+
+    # Planner
+    call_manager,
+    update_plan,
+    get_shopping_list,
+    get_constraints,
+    set_constraints,
+    auto_plan,
+    save_plan,
+    cook_meal,
+]
+
+# Optional: sanity print + asserts so you immediately see if anything’s missing
+_loaded = [t.name for t in TOOLS]
+print("Loaded tools:", _loaded)
+
+assert "set_constraints" in _loaded, "set_constraints not loaded"
+assert "auto_plan" in _loaded, "auto_plan not loaded"
+assert "update_plan" in _loaded, "update_plan not loaded"
+assert "get_shopping_list" in _loaded, "get_shopping_list not loaded"
 
 
 # ────────────────────────────────────────────────────────────────────────────

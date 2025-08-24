@@ -6,6 +6,9 @@ from typing import Dict, Any, List, Tuple, Optional
 from langchain_core.tools import tool
 from langchain.memory import SimpleMemory
 from tools.cuisine_tools import _load as _load_recipes
+from tools.textnorm import canonical_key as _canon, canonical_and_unit as _canon_and_unit
+
+
 
 # -----------------------------------------------------------------------------
 # Optional legacy import: call_pantry (no-op stub if not present)
@@ -197,19 +200,11 @@ def call_manager(query: Dict[str, Any] | str | None = None) -> str:
     return ("Error: no routing agent available (KitchenAgent/ManagerAgent not found). "
             "You can still use cuisine_tools.find_recipes_by_items directly.")
 
-# ---------------- Planning core (strict pantry-first + freeform) ----------------
-from tools import pantry_tools as _pt  # we already import this later for cook; reuse here
-
-def _shadow_pantry_snapshot() -> Dict[str, int]:
-    """Copy the pantry DB items for shadow simulation."""
-    try:
-        return dict(_pt._db.items)  # type: ignore[attr-defined]
-    except Exception:
-        # fallback to JSON if DB not present for some reason
-        return _load_pantry()
+from tools import pantry_tools as _pt  
 
 def _canon_name_unit(item: str, unit: str) -> tuple[str, str]:
-    return _pt._canon_item(item), _pt._norm_unit(unit or "count")  # type: ignore[attr-defined]
+    return _canon_and_unit(item, unit)
+
 
 def _recipe_eligible_by_filters(rec: Dict[str, Any], c: Dict[str, Any]) -> bool:
     # cuisine
@@ -248,16 +243,6 @@ def _full_coverage_and_usage(rec: Dict[str, Any], shadow: Dict[str, int]) -> tup
     return True, usage
 
 def _can_fulfill_strict(rec: Dict[str, Any], shadow: Dict[str, int]) -> bool:
-    ok, _ = _full_coverage_and_usage(rec, shadow)
-    return ok
-
-
-def _apply_deduction(rec: Dict[str, Any], shadow: Dict[str, int]) -> List[str]:
-    """
-    Subtract each ingredient qty from the shadow pantry and return usage lines
-    like '200 g chicken' for logging.
-    """
-    used: List[str] = []
     for ing in rec.get("ingredients", []):
         item = (ing.get("item") or "").strip()
         qty  = int(ing.get("quantity") or 0)
@@ -266,12 +251,25 @@ def _apply_deduction(rec: Dict[str, Any], shadow: Dict[str, int]) -> List[str]:
             continue
         name_c, unit_n = _canon_name_unit(item, unit)
         key = f"{name_c} ({unit_n})"
-        before = int(shadow.get(key, 0))
-        take = min(before, qty)
-        shadow[key] = max(0, before - take)
-        if take > 0:
-            used.append(f"{take} {unit_n} {name_c}")
-    return used
+        if shadow.get(key, 0) < qty:
+            return False
+    return True
+
+def _apply_deduction(rec: Dict[str, Any], shadow: Dict[str, int]) -> None:
+    """
+    Subtract each ingredient qty from the shadow pantry and return usage lines
+    like '200 g chicken' for logging.
+    """
+    for ing in rec.get("ingredients", []):
+        item = (ing.get("item") or "").strip()
+        qty  = int(ing.get("quantity") or 0)
+        unit = _normalize_unit(ing.get("unit") or "count")
+        if not item or qty <= 0:
+            continue
+        name_c, unit_n = _canon_name_unit(item, unit)
+        key = f"{name_c} ({unit_n})"
+        shadow[key] = max(0, int(shadow.get(key, 0)) - qty)
+
 
 
 def _eligible_recipes(c: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -322,23 +320,101 @@ def _can_fulfill_with_prep(rec: Dict[str, Any], shadow: Dict[str, int]) -> tuple
 
     return True, notes
 
+def _shadow_pantry_snapshot_canon() -> dict[tuple[str, str], int]:
+    """
+    Build a shadow pantry map with canonical names:
+      (canonical_name, unit_family) -> quantity
+    """
+    # read the single source-of-truth pantry DB
+    try:
+        items = dict(_pt._db.items)  # e.g., {'spinach (g)': 260, 'paneer (g)': 300, ...}
+    except Exception:
+        # extremely rare fallback: empty shadow
+        items = {}
+    shadow: dict[tuple[str, str], int] = {}
+    for k, v in items.items():
+        base_raw, unit_raw = _split_pantry_key(k)
+        name_c, unit_n = _canon_and_unit(base_raw, unit_raw)
+        shadow[(name_c, unit_n)] = shadow.get((name_c, unit_n), 0) + int(v or 0)
+    return shadow
+
+def _recipe_requirements_canon(rec: dict) -> list[tuple[str, str, int]]:
+    """
+    Return [(canonical_name, unit_family, qty), ...] for a recipe.
+    """
+    out: list[tuple[str, str, int]] = []
+    for ing in rec.get("ingredients", []):
+        item = (ing.get("item") or "").strip()
+        qty  = int(ing.get("quantity") or 0)
+        unit = _normalize_unit(ing.get("unit") or "count")
+        if not item or qty <= 0:
+            continue
+        name_c, unit_n = _canon_and_unit(item, unit)
+        out.append((name_c, unit_n, qty))
+    return out
+
+def _can_fulfill_strict_canon(rec: dict, shadow: dict[tuple[str, str], int]) -> bool:
+    """
+    True iff every canonical ingredient qty can be met from 'shadow'.
+    """
+    for name_c, unit_n, qty in _recipe_requirements_canon(rec):
+        if shadow.get((name_c, unit_n), 0) < qty:
+            return False
+    return True
+
+def _apply_deduction_canon(rec: dict, shadow: dict[tuple[str, str], int]) -> None:
+    """
+    Subtract each canonical ingredient qty from the shadow pantry.
+    """
+    for name_c, unit_n, qty in _recipe_requirements_canon(rec):
+        key = (name_c, unit_n)
+        shadow[key] = max(0, int(shadow.get(key, 0)) - qty)
+        
+def _tightness_key(rec: Dict[str, Any], shadow0: dict[tuple[str, str], int]) -> tuple:
+    """
+    Lower (tighter) first: recipes whose required lines are closest to pantry limits.
+    Encourages placing scarce/bottleneck dishes before they get blocked by earlier picks.
+    """
+    mins = []
+    for name_c, unit_n, need in _recipe_requirements_canon(rec):
+        have = float(shadow0.get((name_c, unit_n), 0))
+        if need <= 0:
+            continue
+        ratio = have / float(need) if need else float("inf")
+        mins.append(ratio)
+    min_ratio = min(mins) if mins else float("inf")
+    total_time = int(rec.get("prep_time_min", 0)) + int(rec.get("cook_time_min", 0))
+    return (min_ratio, total_time, (rec.get("name") or "").lower())
+
+
+def _coverable_once_sorted(candidates: List[Dict[str, Any]],
+                           shadow0: dict[tuple[str, str], int]) -> List[Dict[str, Any]]:
+    """
+    Return the list of recipes that are 100% coverable from the *initial* shadow pantry,
+    sorted by 'tightness' so scarce recipes are scheduled first.
+    """
+    coverable = [r for r in candidates if _can_fulfill_strict_canon(r, shadow0)]
+    coverable.sort(key=lambda r: _tightness_key(r, shadow0))
+    return coverable
+
 @tool
 def auto_plan(payload: Dict[str, Any] | str | None = None) -> str:
     """
     Fill Day×Meals according to constraints.
     payload: {"days": int, "meals": int|[names], "continue": bool?}
 
-    - Pantry-first (strict):
-        * Only recipes fully satisfied from the current shadow pantry.
-        * Simulate deductions between slots.
-        * STOP at the first slot that can’t be filled (already-filled slots remain).
-        * If constraints["allow_subs"] is true and no exact fit exists, allow “100% with prep/subs”
-          (do NOT deduct shadow for these at plan time).
-    - Freeform:
-        * Pick eligible recipes (respect cuisine/diet/time); no availability check.
-        * Gaps will be handled by the shopping list later.
+    Pantry-first (strict):
+      • Only recipes fully satisfied by the *canonicalized* shadow pantry.
+      • Simulate deductions between slots.
+      • Pass 1: place each dish that is 100% coverable from the initial pantry at least once (unseen-first).
+      • Pass 2: if no unseen fits now, pick any coverable (still respects no-consecutive).
+      • Stop the moment a slot cannot be filled.
 
-    Reuses/extends the existing plan if 'continue' is true.
+    Freeform:
+      • Pick eligible recipes (respect cuisine/diet/time); no coverage check.
+
+    Repeat policy:
+      • allow_repeats=False ⇒ avoid consecutive repeats (not global uniqueness).
     """
     # Parse payload
     if isinstance(payload, str):
@@ -362,24 +438,26 @@ def auto_plan(payload: Dict[str, Any] | str | None = None) -> str:
         start_at = (max(existing_ns) + 1) if existing_ns else 1
     target_days = list(range(start_at, start_at + days))
 
-    # Candidates filtered by constraints
+    # Candidate pool (filtered by cuisine/diet/time); deterministic order as tie-breaker
     candidates = _eligible_recipes(c)
-    used_names = set(
-        (plan[d].get(m) or "").strip().lower()
-        for d in plan for m in plan[d]
-        if plan[d].get(m)
-    )
+    candidates.sort(key=lambda r: ((r.get("name") or "").lower(), (r.get("cuisine") or "").lower()))
 
-    # Shadow pantry for strict simulation
-    shadow = _shadow_pantry_snapshot() if c["mode"] == "pantry-first-strict" else {}
+    # Shadow pantry for strict mode (canonicalized)
+    shadow = _shadow_pantry_snapshot_canon() if c["mode"] == "pantry-first-strict" else {}
 
     filled = 0
-    stopped_early = False
+    total_slots = len(target_days) * len(meals)
 
-    # calc log for UI/debug
     calc_log = memory.memories.get("calc_log", [])
     if not isinstance(calc_log, list):
         calc_log = []
+
+    prev_dish_lower: Optional[str] = None
+
+    # ---- NEW: compute once-coverable set (from the initial pantry), sorted by tightness
+    initial_shadow = dict(shadow)
+    once_list = _coverable_once_sorted(candidates, initial_shadow) if shadow else []
+    once_names_left: set[str] = { (r.get("name") or "").strip().lower() for r in once_list }
 
     for day_i in target_days:
         day_key = f"Day{day_i}"
@@ -388,100 +466,105 @@ def auto_plan(payload: Dict[str, Any] | str | None = None) -> str:
         for meal in meals:
             # Skip if already set (continue mode)
             if cont and day_row.get(meal):
+                prev_dish_lower = (day_row.get(meal) or "").strip().lower() or prev_dish_lower
                 continue
 
             pick = None
-            pick_reason = ""
-            prep_notes: List[str] = []
+            pick_reason = None
 
             if c["mode"] == "pantry-first-strict":
-                # 1) exact-only first
-                for r in candidates:
-                    name = (r.get("name") or "").strip()
-                    if not c.get("allow_repeats", True) and name.lower() in used_names:
-                        continue
-                    if _can_fulfill_strict(r, shadow):
-                        pick = r
-                        pick_reason = "100% pantry coverage"
-                        _apply_deduction(pick, shadow)  # deduct shadow for exact matches
-                        break
+                # ---------- PASS 1: prefer dishes not yet placed from the initial 100%-coverable set ----------
+                if once_names_left:
+                    for r in once_list:
+                        name = (r.get("name") or "").strip()
+                        name_l = name.lower()
+                        if name_l not in once_names_left:
+                            continue
+                        if (not c.get("allow_repeats", True)) and prev_dish_lower and name_l == prev_dish_lower:
+                            continue
+                        if _can_fulfill_strict_canon(r, shadow):
+                            pick = r
+                            pick_reason = "100% pantry coverage (once-each pass)"
+                            _apply_deduction_canon(pick, shadow)
+                            once_names_left.discard(name_l)
+                            break
 
-                # 2) if allowed, try 100% with prep/subs (no deduction at plan time)
-                if (pick is None) and c.get("allow_subs", False):
+                # ---------- PASS 2: any coverable recipe now (still respects no-consecutive) ----------
+                if pick is None:
                     for r in candidates:
                         name = (r.get("name") or "").strip()
-                        if not c.get("allow_repeats", True) and name.lower() in used_names:
+                        name_l = name.lower()
+                        if (not c.get("allow_repeats", True)) and prev_dish_lower and name_l == prev_dish_lower:
                             continue
-                        ok, notes = _can_fulfill_with_prep(r, shadow)
-                        if ok:
+                        if _can_fulfill_strict_canon(r, shadow):
                             pick = r
-                            prep_notes = notes or []
-                            pick_reason = "100% with prep/subs" + (f" ({', '.join(prep_notes)})" if prep_notes else "")
+                            pick_reason = "100% pantry coverage"
+                            _apply_deduction_canon(pick, shadow)
+                            # If it was also in once_list but we got to it only now, clear it
+                            once_names_left.discard(name_l)
                             break
 
             else:
-                # Freeform: any eligible (avoid repeats if requested)
+                # Freeform: any eligible (avoid consecutive if requested)
                 for r in candidates:
                     name = (r.get("name") or "").strip()
-                    if not c.get("allow_repeats", True) and name.lower() in used_names:
+                    name_l = name.lower()
+                    if (not c.get("allow_repeats", True)) and prev_dish_lower and name_l == prev_dish_lower:
                         continue
                     pick = r
                     pick_reason = "freeform pick"
                     break
 
-            # ---- write or skip the slot
-            if pick is not None:
-                dish = (pick.get("name") or "").strip()
-                day_row[meal] = dish
-                used_names.add(dish.lower())
-                filled += 1
-
-                calc_log.append({
-                    "slot": f"{day_key} » {meal}",
-                    "dish": dish,
-                    "virtual_deducted": [],   # planning never deducts real pantry
-                    "still_missing": [],      # strict paths guarantee no gaps; freeform gaps handled later
-                    "reason": pick_reason,
-                })
-            else:
-                # couldn’t fill this slot under current rules
+            # ---- assign or stop
+            if not pick:
                 day_row.setdefault(meal, "")
+                # Summarize attempted part and exit
+                memory.memories["plan"] = plan
+                memory.memories["calc_log"] = calc_log
+                nice_mode = "Pantry-first (strict)" if c["mode"] == "pantry-first-strict" else "Freeform"
+
+                attempted_keys = [f"Day{n}" for n in range(start_at, day_i + 1)]
+                lines = []
+                for d in attempted_keys:
+                    row = plan.get(d, {})
+                    parts = [row.get(m, "—") for m in meals]
+                    lines.append(f"{d}: " + ", ".join(parts))
+
+                msg = [f"Mode: {nice_mode}. Filled {filled}/{len(attempted_keys)*len(meals)} slots."]
+                if lines:
+                    msg.append(" " + " ".join(lines[:min(4, len(lines))]))
                 if c["mode"] == "pantry-first-strict":
-                    stopped_early = True
-                # break the inner loop if strict must stop on first failure
-                if stopped_early:
-                    break
+                    msg.append(" I paused when your pantry couldn’t fully cover the next dish. Say \"allow repeats\", \"relax cuisine/diet/time\", or \"switch to freeform\".")
+                return "".join(msg)
 
-        if stopped_early:
-            break  # stop across remaining days
+            dish = (pick.get("name") or "").strip()
+            day_row[meal] = dish
+            prev_dish_lower = dish.lower()
+            filled += 1
 
-    # persist plan + calc log
+            calc_log.append({
+                "slot": f"{day_key} » {meal}",
+                "dish": dish,
+                "virtual_deducted": [],
+                "still_missing": [],
+                "reason": pick_reason or "",
+            })
+
+    # Completed all slots
     memory.memories["plan"] = plan
     memory.memories["calc_log"] = calc_log
-
     nice_mode = "Pantry-first (strict)" if c["mode"] == "pantry-first-strict" else "Freeform"
 
-    # Summarize only the portion attempted
-    days_attempted = target_days if not stopped_early else list(range(start_at, day_i + 1))
-    day_keys_attempted = [f"Day{n}" for n in days_attempted]
+    # Summary (compact)
     lines = []
-    for d in sorted(day_keys_attempted, key=lambda x: int(re.sub(r"\D", "", x) or 0)):
+    for d in [f"Day{n}" for n in target_days]:
         row = plan.get(d, {})
         parts = [row.get(m, "—") for m in meals]
         lines.append(f"{d}: " + ", ".join(parts))
 
-    attempted_slots = len(day_keys_attempted) * len(meals)
-    msg = [f"Mode: {nice_mode}. Filled {filled}/{attempted_slots} slots."]
+    msg = [f"Mode: {nice_mode}. Filled {filled}/{total_slots} slots."]
     if lines:
-        # keep it compact; show up to 4 attempted day lines
         msg.append(" " + " ".join(lines[:min(4, len(lines))]))
-
-    if c["mode"] == "pantry-first-strict":
-        if stopped_early:
-            msg.append(" I paused when your pantry couldn’t fully cover the next dish. Say \"allow repeats\", \"relax cuisine/diet/time\", or \"switch to freeform\" to continue.")
-        elif filled < attempted_slots:
-            msg.append(" I filled everything I could under strict rules. To continue, try \"allow repeats\", relaxing filters, or switch to freeform.")
-
     return "".join(msg)
 
 ##############################################################################
@@ -610,12 +693,11 @@ def _split_pantry_key(key: str) -> Tuple[str, str]:
         return _normalise(base), "count"
     return _normalise(m.group(1)), _normalize_unit(m.group(2))
 
-def _find_matching_key(pantry: Dict[str, int], item: str, unit: str) -> str | None:
-    base = _normalise(item)
-    unit = _normalize_unit(unit)
+def _find_matching_key(pantry, item, unit):
+    name_c, unit_n = _canon_and_unit(item, unit or "count")
     for k in pantry.keys():
         b, u = _split_pantry_key(k)
-        if b == base and u == unit:
+        if _canon(b) == name_c and _normalize_unit(u) == unit_n:
             return k
     return None
 
@@ -639,8 +721,9 @@ def _collect_plan_requirements(plan: Dict[str, Dict[str, str]]) -> Dict[Tuple[st
             if not rec:
                 continue
             for ing in rec.get("ingredients", []):
-                item = _normalise(ing.get("item",""))
-                unit = _normalize_unit(ing.get("unit") or "count")
+                item = _canon(ing.get("item",""))
+                _, unit = _canon_and_unit(item, ing.get("unit") or "count")  # re-normalize unit family
+
                 qty  = int(ing.get("quantity") or 0)
                 if qty <= 0 or not item:
                     continue
@@ -713,7 +796,6 @@ def save_plan(payload: Dict[str, Any] | str | None = None) -> str:
 ##############################################################################
 # 6 · cook_meal – mark a slot/dish cooked and consume ingredients from pantry
 ##############################################################################
-from tools import pantry_tools as _pt  # reuse mirroring & normalization
 def _deduct_one(item: str, qty: int, unit: str) -> None:
     # Normalize exactly like pantry tools do
     name = _pt._canon_item(item)

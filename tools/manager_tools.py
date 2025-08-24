@@ -6,6 +6,8 @@ missing_ingredients tool. No agent-to-agent wrappers are used anymore.
 from __future__ import annotations
 import json, os, re
 from typing import Dict, Any, List, Tuple, Optional
+from tools.textnorm import canonical_key, canonical_and_unit
+
 
 from langchain_core.tools import tool
 from langchain.memory import SimpleMemory
@@ -137,17 +139,28 @@ def _load_pantry() -> Dict[str, int]:
     except Exception:
         return {}
 
-def _find_matching_key(pantry: Dict[str, int], item: str, unit: str) -> Optional[str]:
-    """Exact base-name + unit match after canonicalization."""
-    base = _canonical_item_name(item)
-    unit = _normalize_unit(unit)
-    for k in pantry.keys():
-        b, u = _split_pantry_key(k)
-        if _canonical_item_name(b) == base and u == unit:
-            return k
-    return None
 
+from tools.textnorm import canonical_key
 # ----------------------------- Tools ----------------------------------------
+_name_unit_re = re.compile(r"^\s*(.*?)\s*\(([^)]+)\)\s*$")
+
+def _normalize_unit(u: str | None) -> str:
+    if not u: return "count"
+    s = str(u).strip().lower()
+    m = {
+        "g":"g","gram":"g","grams":"g","gms":"g","kg":"g","kilogram":"g","kilograms":"g",
+        "ml":"ml","milliliter":"ml","milliliters":"ml","millilitre":"ml","millilitres":"ml",
+        "l":"ml","liter":"ml","liters":"ml","litre":"ml","litres":"ml",
+        "count":"count","piece":"count","pieces":"count","pc":"count","pcs":"count"
+    }
+    return m.get(s, s)
+
+def _split_pantry_key(key: str) -> tuple[str, str]:
+    m = _name_unit_re.match(key)
+    if not m:
+        base = key.split("(")[0]
+        return base.strip(), "count"
+    return m.group(1).strip(), _normalize_unit(m.group(2))
 @tool
 def missing_ingredients(dish: str) -> str:
     """
@@ -155,9 +168,9 @@ def missing_ingredients(dish: str) -> str:
     STRING-ONLY input. Returns a short natural-language sentence.
 
     Matching rules:
-    • Name matching uses canonical base names (descriptor-stripped) + exact unit family (g/ml/count).
-    • Units are normalized (kg→g, l→ml, default count).
-    • This is a strict check (no creative swaps). Use `suggest_substitutions` to propose alternatives.
+    • Name matching uses canonical base names (spaCy primary; inflect fallback).
+    • Units are normalized to g/ml/count families.
+    • Strict check (no creative swaps here).
     """
     dish = _clean_name(dish)
     if not isinstance(dish, str) or not dish:
@@ -167,27 +180,30 @@ def missing_ingredients(dish: str) -> str:
     if not recipe:
         return f"⚠️ Recipe '{dish}' not found."
 
-    pantry = _load_pantry()
+    # Build a canonical pantry map: (canon_name, unit) -> qty
+    pantry_raw = _load_pantry()
+    pantry_map: dict[tuple[str, str], int] = {}
+    for k, v in pantry_raw.items():
+        base_raw, unit_raw = _split_pantry_key(k)
+        cname, cunit = canonical_and_unit(base_raw, unit_raw)
+        pantry_map[(cname, cunit)] = pantry_map.get((cname, cunit), 0) + int(v or 0)
 
-    deficits: List[str] = []
+    deficits: list[str] = []
     for ing in recipe.get("ingredients", []):
         raw_item = str(ing.get("item", "")).strip()
         if not raw_item:
             continue
         need_qty = int(ing.get("quantity", 0) or 0)
-        unit = _normalize_unit(ing.get("unit") or "count")
+        unit_raw = _normalize_unit(ing.get("unit") or "count")
         if need_qty <= 0:
             continue
 
-        key = _find_matching_key(pantry, raw_item, unit)
-        if key is None:
-            # Entire amount missing
-            deficits.append(f"{need_qty} {unit} {raw_item}")
-            continue
-
-        have = int(pantry.get(key, 0))
+        cname, cunit = canonical_and_unit(raw_item, unit_raw)
+        have = int(pantry_map.get((cname, cunit), 0))
         if have < need_qty:
-            deficits.append(f"{need_qty - have} {unit} {raw_item}")
+            # if completely missing, show full need; if partial, show shortfall
+            short = need_qty if have == 0 else (need_qty - have)
+            deficits.append(f"{short} {cunit} {raw_item}")
 
     dish_title = dish.strip().title()
     if not deficits:
@@ -196,6 +212,7 @@ def missing_ingredients(dish: str) -> str:
         return f"You'll still need {deficits[0]} to cook {dish_title}."
     *rest, last = deficits
     return f"You'll still need {', '.join(rest)} and {last} to cook {dish_title}."
+
 
 # ---------- Substitution suggester (schema-bound, deterministic heuristics) --
 def _coerce_payload(payload: dict | str) -> dict:

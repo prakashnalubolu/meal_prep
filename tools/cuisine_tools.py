@@ -5,6 +5,8 @@ import json, os, re, difflib
 from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from langchain_core.tools import tool
+from tools.textnorm import canonical_key, canonicalize_many
+
 
 load_dotenv()
 
@@ -174,6 +176,9 @@ def list_recipes(cuisine: Optional[str] = None,
         return "📭 No recipes found with those filters."
     return "\n".join(f"- {r['name'].title()} ({r['cuisine']})" for r in items)
 
+def _canon(s: str) -> str:
+    return canonical_key(s)
+
 @tool
 def find_recipes_by_items(payload: dict | str) -> str:
     """
@@ -206,7 +211,6 @@ def find_recipes_by_items(payload: dict | str) -> str:
             diet    = data.get("diet", diet)
             k       = data.get("k", k)
         else:
-            # fallback: split free-text into a list
             items = [w.strip() for w in re.split(r"[,;\n]", s) if w.strip()]
 
     items = [s.strip() for s in (items or []) if s and s.strip()]
@@ -234,20 +238,19 @@ def find_recipes_by_items(payload: dict | str) -> str:
             or "📭 No recipes match those filters."
         )
 
-    # ---------- Rank by strict pantry coverage (100% first), then partial coverage ----------
-    have_set = {_canon(x) for x in items}
+    # ---------- Canonicalize and rank ----------
+    have_set = set(canonicalize_many(items))  # spaCy primary → inflect fallback
     ranked = []  # (is_full_cover: bool, covered_count: int, total_time: int, recipe: dict, coverage_ratio: float)
 
     for r in recipes:
         need_set = {
-            _canon(i.get("item", ""))
+            canonical_key(i.get("item", ""))
             for i in (r.get("ingredients") or [])
             if (i.get("item") or "").strip()
         }
         need_set.discard("")
         total_need = len(need_set)
         if total_need == 0:
-            # avoid division by zero; treat as not matchable
             continue
 
         covered_cnt = len(need_set & have_set)
@@ -262,9 +265,8 @@ def find_recipes_by_items(payload: dict | str) -> str:
     # Sort: 100% coverage first, then more items covered, then quicker, then name
     ranked.sort(key=lambda t: (not t[0], -t[1], t[2], (t[3].get("name") or "").lower()))
 
-    # Optionally bias by requested diet (only meaningful if user asked for non-veg priority)
+    # Optional bias by requested diet (only meaningful for "non-veg" preference)
     def _diet_rank(recipe_diet: str, user_want: Optional[str]) -> int:
-        # lower is better
         want = _normalise_diet(user_want)
         r    = _normalise_diet(recipe_diet)
         if want == "non-veg":
@@ -272,7 +274,6 @@ def find_recipes_by_items(payload: dict | str) -> str:
             return order.get(r, 3)
         return 0
 
-    # Split into full and partial buckets (preserving the sort order above)
     full = [t for t in ranked if t[0]]
     partial = [t for t in ranked if not t[0]]
 
@@ -280,11 +281,9 @@ def find_recipes_by_items(payload: dict | str) -> str:
         full.sort(key=lambda t: (_diet_rank(t[3].get("diet", ""), diet), t[2], (t[3].get("name") or "").lower()))
         partial.sort(key=lambda t: (_diet_rank(t[3].get("diet", ""), diet), -t[1], t[2], (t[3].get("name") or "").lower()))
 
-    # Prefer ONLY fully covered recipes if any exist
     bucket = full if full else partial
     top = bucket[:k]
 
-    # ---- format
     return "\n".join(
         f"- {t[3]['name'].title()} ({t[3]['cuisine']}) — {round(t[4] * 100):>3}% ingredients covered"
         for t in top

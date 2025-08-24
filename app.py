@@ -4,7 +4,7 @@ import os, json, re, datetime
 from typing import Any, Dict, List, Tuple
 import pandas as pd
 import streamlit as st
-
+from tools.meal_plan_tools import DEFAULT_CONSTRAINTS as PLANNER_DEFAULTS
 from agents.kitchen_agent import chat as kitchen_chat
 
 # --- Planner tools & memories
@@ -13,6 +13,9 @@ from tools.meal_plan_tools import (
     update_plan, cook_meal,
     get_shopping_list, save_plan,
 )
+# Ensure default constraints are present so the badge shows Pantry-first (strict)
+if "constraints" not in planner_memory.memories:
+    planner_memory.memories["constraints"] = dict(PLANNER_DEFAULTS)
 
 # (Optional) manager slot-memory; useful to fully reset caches
 try:
@@ -220,20 +223,19 @@ left, middle, right = st.columns([0.35, 0.40, 0.25], gap="large")
 # LEFT — Planner
 
 with left:
-    # --- Header row: title + reset button right next to it ----
-    hdr_title, hdr_btn, _spacer = st.columns([0.25, 0.06, 0.69])
+    # --- Header row: icon • title • refresh --------------------------------------
+    hdr_title, hdr_btn = st.columns([0.50, 0.57])
+
     with hdr_title:
         st.markdown("### 📅 Planner")
-        # small mode badge under the Planner title
         _constraints = planner_memory.memories.get("constraints", {})
-        _mode_badge = "Pantry-first (strict)" if (_constraints.get("mode") or "") == "pantry-first-strict" else "Freeform"
+        _mode_badge = "Pantry-first (strict)" if (_constraints.get("mode") == "pantry-first-strict") else "Freeform"
         st.caption(f"Mode: {_mode_badge}")
-
 
     reset_done = False
     with hdr_btn:
-        st.markdown('<div id="reset-fab">', unsafe_allow_html=True)
-        reset_clicked = st.button("↺", key="reset_plan", help="Clear chat & plan", use_container_width=True)
+        st.markdown('<div id="reset-fab" style="margin-left:-10px;margin-top:6px;display:flex;justify-content:flex-start;">',unsafe_allow_html=True)
+        reset_clicked = st.button("↺ Reset", key="reset_plan", help="Clear chat & plan", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
         if reset_clicked:
             ss["messages_kitchen"].clear()
@@ -242,6 +244,7 @@ with left:
             ss["cuisine_autofocus"] = ""
             try:
                 planner_memory.memories.clear()
+                planner_memory.memories["constraints"] = dict(PLANNER_DEFAULTS)
             except Exception:
                 pass
             try:
