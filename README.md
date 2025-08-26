@@ -4,18 +4,20 @@
 ### A fast, pragmatic meal-planning assistant built with Streamlit + LangChain (single ReAct agent).
 ### It manages your pantry, finds recipes you can cook right now, plans multi-day menus, builds a quantity-aware shopping list, and marks meals cooked (with real deductions).
 
-# Table of contents:
-## Demo
-## What can Kitchbot do?
-## Why Kitchbot?
-## Architecture
-## Key features
-## Best-fit use cases
-## Getting started
-## Repository layout
-## Tooling (APIs the agent calls)
-## Planner logic
-## Memory
+## Table of contents:
+
+- [Demo](#demo)
+- [What can Kitchbot do?](#what-can-kitchbot-do)
+- [Why Kitchbot?](#why-kitchbot)
+- [Architecture](#architecture)
+- [Key features](#key-features)
+- [Best-fit use cases](#best-fit-use-cases)
+- [Getting started](#getting-started)
+- [Repository layout](#repository-layout)
+- [Tooling (APIs the agent calls)](#tooling-apis-the-agent-calls)
+- [Planner logic](#planner-logic)
+- [Memory](#memory)
+
 
 # Demo:
 ## Video URL: #TBU
